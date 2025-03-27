@@ -1,15 +1,18 @@
 import pandas as pd
 from datetime import date
 import calendar
-from utils import snowflake_login, carga_snow_generic, clean_table, descargar_segmento
+from utils import snowflake_login, carga_snow_generic
 import gspread
-from gspread_dataframe import get_as_dataframe, set_with_dataframe
+from gspread_dataframe import get_as_dataframe
 from google.oauth2.service_account import Credentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 import re
 import streamlit as st
 from cabeceras import participacion
+import os
+import psutil
+import time
 
 scopes = ['https://www.googleapis.com/auth/spreadsheets',
           'https://www.googleapis.com/auth/drive']
@@ -156,3 +159,13 @@ if p:
                                                           (~df_total['PUNTERA'].str.contains('EXH'))],
                              fecha_inicio=fecha_inicio)
     st.dataframe(df_final)
+
+exit_app = st.button("Cerrar el programa.")
+if exit_app:
+    st.write('Cerrando el programa. Espere 10 segundos antes de cerrar la ventana.')
+    # Give a bit of delay for user experience
+    time.sleep(1)
+    # Terminate streamlit python process
+    pid = os.getpid()
+    p = psutil.Process(pid)
+    p.terminate()

@@ -46,12 +46,13 @@ def renombrar_columnas(col_name):
 sheet = st.text_input('Ingrese drive de cabeceras')
 gs = gc.open_by_key(sheet)
 
-meses = {"Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6,
-         "Julio": 7, "Agosto": 8, "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12}
+meses = {"Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6, "Julio": 7,
+         "Agosto": 8, "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12}
 mes = st.selectbox('Seleccione mes: ', meses.keys())
 fecha = date.today().replace(month=meses[mes])
-# if fecha <= date.today():
-#     fecha = fecha.replace(year=date.today().year + 1)
+
+if fecha <= date.today():
+    fecha = fecha.replace(year=date.today().year + 1)
 
 fecha_inicio = fecha.replace(day=1).strftime('%Y-%m-%d')
 fecha_fin = fecha.replace(day=calendar.monthrange(date.today().replace(month=fecha.month).year,

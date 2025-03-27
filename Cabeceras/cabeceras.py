@@ -75,7 +75,7 @@ def cerrar (df:pd.DataFrame):
 def participacion (cursor, punt:pd.DataFrame, fecha_inicio:str):
     #Descargamos df
     dim = descargar_segmento(cursor=cursor, query='Dimensiones',
-                             cond=f" and ip.fecha_inicio = '{fecha_inicio}'")
+                             cond=f" and ip.fecha_inicio = '{fecha_inicio}';")
     ac = descargar_segmento(cursor=cursor, query='Aceleraciones').astype('str').replace('nan', pd.NA)
 
     #Cambiamos formato de columnas

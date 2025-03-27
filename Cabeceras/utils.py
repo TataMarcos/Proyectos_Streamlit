@@ -27,7 +27,7 @@ def get_credentials_correo(type: str) -> dict:
 
 def snowflake_login():
 
-    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\JUBILADOS_LOYALTY':
+    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\PROYECTOS_STREAMLIT\\CABECERAS':
 
         user = "PLUS_VM1_NEW"
 

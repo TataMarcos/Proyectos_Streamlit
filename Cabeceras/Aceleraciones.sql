@@ -38,7 +38,7 @@ select *, round(div0(unidades_promedio, avg_basal_180), 2) as aceleracion_art,
     round(median(aceleracion_art) over (partition by clase), 2) as aceleracion_clase from vp)
 
 , f as (
-select geog_locl_id, geog_locl_cod, geog_locl_desc, clase, subclase, artc_artc_id, item, artc_artc_desc,
+select geog_locl_id, geog_locl_cod as local, geog_locl_desc, clase, subclase, artc_artc_id, item, artc_artc_desc,
     round(avg(aceleracion_art), 2) as aceleracion_art, round(avg(aceleracion_subclase), 2) as aceleracion_subclase,
     round(avg(aceleracion_clase), 2) as aceleracion_clase
 from ac group by all)

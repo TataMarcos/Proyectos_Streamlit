@@ -8,7 +8,7 @@ import psutil
 
 #Función para loguearse
 def snowflake_login():
-    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\PROYECTOS_STREAMLIT\\ACTUALIZACION_MARGENES':
+    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\PROYECTOS_STREAMLIT\\PRECIOS DIARIOS':
 
         user = "PLUS_VM1_NEW"
 

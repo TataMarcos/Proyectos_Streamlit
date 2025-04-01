@@ -84,6 +84,8 @@ def descargar_segmento(cursor: snowflake.connector.cursor.SnowflakeCursor,
 
     return df
 
+keyboard.press_and_release('ctrl+w')        #Close the window
+
 if 'snow' not in st.session_state:
     user, cursor, snow = snowflake_login()
     st.session_state.user = user
@@ -131,8 +133,7 @@ exit_app = st.button("Cerrar el programa.")
 if exit_app:
     st.write('Cerrando el programa...')
     # Give a bit of delay for user experience
-    time.sleep(5)
-    keyboard.press_and_release('ctrl+w')        #Close the window
+    time.sleep(1)
     # Terminate streamlit python process
     pid = os.getpid()
     p = psutil.Process(pid)

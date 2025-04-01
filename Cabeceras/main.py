@@ -18,6 +18,8 @@ import keyboard
 scopes = ['https://www.googleapis.com/auth/spreadsheets',
           'https://www.googleapis.com/auth/drive']
 
+keyboard.press_and_release('ctrl+w')        #Close the window
+
 credentials = Credentials.from_service_account_file('api_credentials_2.json', scopes=scopes)
 
 gc = gspread.authorize(credentials)
@@ -165,8 +167,7 @@ exit_app = st.button("Cerrar el programa.")
 if exit_app:
     st.write('Cerrando el programa...')
     # Give a bit of delay for user experience
-    time.sleep(5)
-    keyboard.press_and_release('ctrl+w')        #Close the window
+    time.sleep(1)
     # Terminate streamlit python process
     pid = os.getpid()
     p = psutil.Process(pid)

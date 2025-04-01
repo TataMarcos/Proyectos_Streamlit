@@ -13,6 +13,7 @@ from cabeceras import participacion
 import os
 import psutil
 import time
+import keyboard
 
 scopes = ['https://www.googleapis.com/auth/spreadsheets',
           'https://www.googleapis.com/auth/drive']
@@ -162,9 +163,10 @@ if p:
 
 exit_app = st.button("Cerrar el programa.")
 if exit_app:
-    st.write('Cerrando el programa. Espere 10 segundos antes de cerrar la ventana.')
+    st.write('Cerrando el programa...')
     # Give a bit of delay for user experience
-    time.sleep(1)
+    time.sleep(5)
+    keyboard.press_and_release('ctrl+w')        #Close the window
     # Terminate streamlit python process
     pid = os.getpid()
     p = psutil.Process(pid)

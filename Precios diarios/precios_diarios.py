@@ -5,6 +5,7 @@ import json
 import streamlit as st
 import time
 import psutil
+import keyboard
 
 #Función para loguearse
 def snowflake_login():
@@ -128,9 +129,10 @@ except:
 #Armamos bloque para cerrar el programa
 exit_app = st.button("Cerrar el programa.")
 if exit_app:
-    st.write('Cerrando el programa. Espere 10 segundos antes de cerrar la ventana.')
+    st.write('Cerrando el programa...')
     # Give a bit of delay for user experience
-    time.sleep(1)
+    time.sleep(5)
+    keyboard.press_and_release('ctrl+w')        #Close the window
     # Terminate streamlit python process
     pid = os.getpid()
     p = psutil.Process(pid)

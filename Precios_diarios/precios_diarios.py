@@ -9,7 +9,7 @@ import keyboard
 
 #Función para loguearse
 def snowflake_login():
-    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\PROYECTOS_STREAMLIT\\PRECIOS DIARIOS':
+    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\PROYECTOS_STREAMLIT\\PRECIOS_DIARIOS':
 
         user = "PLUS_VM1_NEW"
 

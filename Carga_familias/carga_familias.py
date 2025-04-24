@@ -37,7 +37,7 @@ def snowflake_login():
 
     return user, cursor, snowflake_connection
 
-# keyboard.press_and_release('ctrl+w')        #Close the window
+keyboard.press_and_release('ctrl+w')        #Close the window
 
 if 'snow' not in st.session_state:
     user, cursor, snow = snowflake_login()

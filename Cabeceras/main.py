@@ -49,7 +49,8 @@ def renombrar_columnas(col_name):
     else:
         return col_name
 
-sheet = st.text_input('Ingrese drive de cabeceras')
+url = st.text_input('Ingrese url del drive de cabeceras')
+sheet = url.split('/')[-2]
 gs = gc.open_by_key(sheet)
 
 meses = {"Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6, "Julio": 7,

@@ -39,19 +39,20 @@ def snowflake_login():
 
 keyboard.press_and_release('ctrl+w')        #Close the window
 
-if 'snow' not in st.session_state:
-    user, cursor, snow = snowflake_login()
-    st.session_state.user = user
-    st.session_state.cursor = cursor
-    st.session_state.snow = snow
-else:
-    snow = st.session_state.snow  # Reuse the existing Snowflake session
-    user = st.session_state.user
-    cursor = st.session_state.cursor
-
+try:
+    if 'snow' not in st.session_state:
+        user, cursor, snow = snowflake_login()
+        st.session_state.user = user
+        st.session_state.cursor = cursor
+        st.session_state.snow = snow
+    else:
+        snow = st.session_state.snow  # Reuse the existing Snowflake session
+        user = st.session_state.user
+        cursor = st.session_state.cursor
+except:
+    st.write('Aún no se ingresaron credenciales')
 
 f=datetime.now().strftime('%Y%m%d_%H%M%S')
-
 
 if 'familias' not in st.session_state:
     familias = st.button("Descargar familias actuales.")
@@ -82,85 +83,91 @@ else:
     st.write('')
     st.dataframe(st.session_state.familias)
 
-continuar = st.button("Actualizar familias")
-
-if continuar:
-    st.write("\nAhora importá un archivo excel con las siguientes columnas [ITEM, FAMILIA {ej: 1000284073}]. Aguarda unos segundos..")
-    
-    #Cargamos el archivo
-    uploaded_file = st.file_uploader("Cargar el archivo", type="xlsx")
-
-    if uploaded_file is not None:
-        df = pd.read_excel(uploaded_file)
-        df.columns = df.columns.str.upper()
-
-        try:
-            df = df[[ 'ITEM', 'FAMILIA']]
-        except KeyError:
-            st.write("\n❌ Hay un error con las columnas. Verifica que todas existan en el archivo.")
-            st.write("\nPrograma finalizado. Cerrando...")
-            # Give a bit of delay for user experience
-            time.sleep(5)
-            # Terminate streamlit python process
-            pid = os.getpid()
-            p = psutil.Process(pid)
-            p.terminate()
-    
-        st.dataframe(df)
-
-        df = df.dropna().drop_duplicates()
-
-        st.write("\n✅ Archivo validado correctamente. Puedes continuar.")
+if 'upd' not in st.session_state:
+    continuar = st.button("Actualizar familias")
+    if continuar:
+        st.session_state.upd = True
+try:
+    if st.session_state.upd:
         st.write('')
-        st.write('El archivo tiene ', len(df), ' combinaciones')
+        st.write("Ahora importá un archivo excel con las siguientes columnas [ITEM, FAMILIA]. Aguarda unos segundos..")
+        
+        #Cargamos el archivo
+        uploaded_file = st.file_uploader("Cargar el archivo", type="xlsx")
 
-        try:
-            df["ITEM"] = df["ITEM"].astype('int64')
-        except:
-            st.write('La columna item tiene valores no numéricos. Revisar.')
-            st.write("Programa finalizado. Cerrando...")
-            # Give a bit of delay for user experience
-            time.sleep(5)
-            # Terminate streamlit python process
-            pid = os.getpid()
-            p = psutil.Process(pid)
-            p.terminate()
+        if uploaded_file is not None:
+            df = pd.read_excel(uploaded_file)
+            df.columns = df.columns.str.upper()
 
-        df['TABLA']=f
-        df['USUARIO']=user
+            try:
+                df = df[[ 'ITEM', 'FAMILIA']]
+            except KeyError:
+                st.write("\n❌ Hay un error con las columnas. Verifica que todas existan en el archivo.")
+                st.write("\nPrograma finalizado. Cerrando...")
+                # Give a bit of delay for user experience
+                time.sleep(5)
+                # Terminate streamlit python process
+                pid = os.getpid()
+                p = psutil.Process(pid)
+                p.terminate()
+        
+            st.dataframe(df.astype('str'))
 
-        df = df[['ITEM','FAMILIA','TABLA','USUARIO']]
-        st.write('\nEl archivo a cargar queda asi:')
-        st.dataframe(df)
+            df = df.dropna().drop_duplicates()
 
-        time.sleep(3)
-        try:
-            success, nchunks, nrows, _ = write_pandas(snow, df, database='SANDBOX_PLUS', schema='DWH',
-                                                    table_name='INPUT_RELACIONES_ITEM_PARENT_ACTUALIZADOS')
-            st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
-        except:
-            st.write('Falló la carga')
-            st.write("Programa finalizado. Cerrando...")
-            # Give a bit of delay for user experience
-            time.sleep(10)
-            # Terminate streamlit python process
-            pid = os.getpid()
-            p = psutil.Process(pid)
-            p.terminate()
+            st.write("\n✅ Archivo validado correctamente. Puedes continuar.")
+            st.write('')
+            st.write('El archivo tiene ', len(df), ' combinaciones')
+
+            try:
+                df["ITEM"] = df["ITEM"].astype('int64')
+            except:
+                st.write('La columna item tiene valores no numéricos. Revisar.')
+                st.write("Programa finalizado. Cerrando...")
+                # Give a bit of delay for user experience
+                time.sleep(5)
+                # Terminate streamlit python process
+                pid = os.getpid()
+                p = psutil.Process(pid)
+                p.terminate()
+
+            df['TABLA']=f
+            df['USUARIO']=user
+
+            df = df[['ITEM','FAMILIA','TABLA','USUARIO']]
+            st.write('El archivo a cargar queda asi:')
+            st.dataframe(df.astype('str'))
+
+            time.sleep(3)
+            try:
+                success, nchunks, nrows, _ = write_pandas(snow, df, database='SANDBOX_PLUS', schema='DWH',
+                                                          table_name='INPUT_RELACIONES_ITEM_PARENT_ACTUALIZADOS')
+                st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
+            except:
+                st.write('Falló la carga')
+                st.write("Programa finalizado. Cerrando...")
+                # Give a bit of delay for user experience
+                time.sleep(10)
+                # Terminate streamlit python process
+                pid = os.getpid()
+                p = psutil.Process(pid)
+                p.terminate()
 
 
-        st.write('\nAhora voy a actualizar la info en la base de datos')
+            st.write('Ahora voy a actualizar la info en la base de datos')
 
-        qa=f"""MERGE INTO SANDBOX_PLUS.DWH.RELACIONES_ITEM_PARENT_ACTUALIzADOS AS target
-        USING (select distinct item,familia from sandbox_plus.dwh.INPUT_RELACIONES_ITEM_PARENT_ACTUALIZADOS where tabla='{f}') AS source
-        ON target.item = source.item
-        WHEN MATCHED THEN 
-            UPDATE SET target.familia = source.familia
-        WHEN NOT MATCHED THEN 
-            INSERT (item, familia) VALUES (source.item, source.familia)"""
+            qa=f"""MERGE INTO SANDBOX_PLUS.DWH.RELACIONES_ITEM_PARENT_ACTUALIzADOS AS target
+            USING (select distinct item,familia from sandbox_plus.dwh.INPUT_RELACIONES_ITEM_PARENT_ACTUALIZADOS where tabla='{f}') AS source
+            ON target.item = source.item
+            WHEN MATCHED THEN 
+                UPDATE SET target.familia = source.familia
+            WHEN NOT MATCHED THEN 
+                INSERT (item, familia) VALUES (source.item, source.familia)"""
 
-        result = cursor.execute(qa)
-        st.write("Se actualizaron ", result.rowcount, " lineas")
+            result = cursor.execute(qa)
+            st.write("Se actualizaron ", result.rowcount, " lineas")
+except:
+    pass
 
 #Armamos bloque para cerrar el programa
 exit_app = st.button("Cerrar el programa.")

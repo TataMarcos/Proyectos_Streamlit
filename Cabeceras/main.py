@@ -79,7 +79,7 @@ for hoja in hojas:
     juli0 = get_as_dataframe(worksheetL, header=None)
     
     # Encontrar la fila que contiene la palabra "EXHIBICION" en la primera columna
-    condicion = juli0[juli0[0].str.contains("EXHIBICIÓN", na=False)].index[0] if any(juli0[0].str.contains("EXHIBICIÓN", na=False)) else None
+    condicion = juli0.astype('str')[juli0.astype('str').iloc[:, 0].str.contains("EXHIBICIÓN", na=False)].index[0] if any(juli0.astype('str').iloc[:, 0].str.contains("EXHIBICIÓN", na=False)) else None
 
     if condicion is not None:
         # Filtrar las filas a partir de la condición

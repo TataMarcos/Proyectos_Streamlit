@@ -126,7 +126,7 @@ try:
     #Mostramos el dataframe final
     st.dataframe(df_final)
 except:
-    st.write('Todavía no se cargó el archivo')
+    st.write('Todavía no se cargó el archivo o se acargó un archivo con un formato erróneo')
 
 #Armamos bloque para cerrar el programa
 exit_app = st.button("Cerrar el programa.")

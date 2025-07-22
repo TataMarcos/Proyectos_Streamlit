@@ -5,6 +5,8 @@ import streamlit as st
 import time
 import psutil
 
+st.set_page_config(page_title='Consulta de precios')
+
 st.title('Consulta de precios')
 
 if 'snow' not in st.session_state:

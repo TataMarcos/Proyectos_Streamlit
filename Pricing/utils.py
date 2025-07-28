@@ -3,6 +3,7 @@ import snowflake.connector
 import json
 import pandas as pd
 import streamlit as st
+from snowflake.connector.pandas_tools import write_pandas
 
 #Función para loguearse
 def snowflake_login():
@@ -25,9 +26,12 @@ def snowflake_login():
                 print(f"Intento {counter + 1}")
 
                 try:
-                    user = st.text_input("INGRESAR USUARIO: ")
-                    psw = st.text_input("INGRESAR CONTRASEÑA: ")
-                    pass_ = st.text_input("INGRESAR PASSCODE: ")
+                    # user = st.text_input("INGRESAR USUARIO: ")
+                    # psw = st.text_input("INGRESAR CONTRASEÑA: ")
+                    # pass_ = st.text_input("INGRESAR PASSCODE: ")
+                    user = input("INGRESAR USUARIO: ")
+                    psw = input("INGRESAR CONTRASEÑA: ")
+                    pass_ = input("INGRESAR PASSCODE: ")
 
                     # Establish Snowflake connection
                     snowflake_connection = snowflake.connector.connect(
@@ -73,10 +77,33 @@ def descargar_segmento(cursor: snowflake.connector.cursor.SnowflakeCursor,
         cursor.execute(command)
         #command = command
     else:
-        cursor.execute(command.replace(';', cond))
+        cursor.execute(command.format(cond=cond))
         #command = command.replace(';', cond)
 
     # Obtenemos el resultado de la consulta del cursor en una dataframe de pandas
     df = cursor.fetch_pandas_all()
 
     return df
+
+def carga_snow_generic(df, ctx, table, database, schema):
+
+    # Ingresamos la base de datos en Snow
+    success = write_pandas(df = df, conn = ctx, table_name= table,
+                           database= database, schema = schema)
+
+    if success:
+        print('SUCCESS')
+        return success
+
+def clean_table(cursor, table, cond=None):
+
+    # SQL para obtener datos
+    if cond is None:
+        sql = f"DELETE FROM SANDBOX_PLUS.DWH.{table};"
+    else:
+        sql = f"DELETE FROM SANDBOX_PLUS.DWH.{table} WHERE {cond};"
+
+    # Ejecuto select de Snow
+    cursor.execute(sql)
+
+    return True

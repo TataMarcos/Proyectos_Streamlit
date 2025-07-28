@@ -75,13 +75,14 @@ try:
         st.write('')
         st.write('Cargando tabla auxiliar')
         time.sleep(3)
-        success, nchunks, nrows, _ = write_pandas(cursor, df, table_name='INPUT_PRICING_ACUMULADO',
+        success, nchunks, nrows, _ = write_pandas(snow, df, table_name='INPUT_PRICING_ACUMULADO',
                                                   database='SANDBOX_PLUS', schema='DWH')
         st.write('')
         st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
 
     except Exception as e:
         st.write(f"Error al cargar en Snowflake: {e}")
+        st.stop()
     
     time.sleep(5)
     #Filtros
@@ -230,8 +231,8 @@ SELECT
 FROM
     FILTRO;
     """
-    # cursor.execute(query)
-    st.write('INSERT 2')
+    cursor.execute(query)
+    # st.write('INSERT 2')
 
     time.sleep(3)
 

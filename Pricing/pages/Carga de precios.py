@@ -64,27 +64,35 @@ try:
 
     f = datetime.now().strftime('%Y%m%d_%H%M%S')
 
+    st.write(f)
+
     df['TABLA']=str(f)
     df.columns=df.columns.str.upper()
     df=df[['CODIGO_TIENDA', 'ORIN', 'PVP_NUEVO', 'EFFECTIVE_DATE', 'TABLA']]
 
     #cargo a snowflake las combinaciones a impactar
     try:
-        # success, nchunks, nrows, _ = write_pandas(cursor, df, table_name='INPUT_PRICING_ACUMULADO',
-        #                                           database='SANDBOX_PLUS', schema='DWH')
-        # st.write('')
-        # st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
-        st.write('INSERT')
+        st.write('')
+        st.write('Cargando tabla auxiliar')
+        time.sleep(3)
+        success, nchunks, nrows, _ = write_pandas(cursor, df, table_name='INPUT_PRICING_ACUMULADO',
+                                                  database='SANDBOX_PLUS', schema='DWH')
+        st.write('')
+        st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
 
     except Exception as e:
         st.write(f"Error al cargar en Snowflake: {e}")
     
+    time.sleep(5)
     #Filtros
     filtros_posibles = {'PROMOCION':'ESTA_EN_PROMO = 0',
                         'EXCLUIDOS COMERCIAL':'EXCLUIDO_COMERCIAL = 0',
                         'ACTIVOS':'ARTC_ESTA_ID = 4',
                         'PRECIO DIFERENTE':'S.STCK_PRECIO_VENTA_DIA_CIVA <> A.PVP_NUEVO'}
     filtros = st.multiselect('Filtros:', list(filtros_posibles.keys()), list(filtros_posibles.keys()))
+
+    st.write('Seleccionar los filtros y aguardar...')
+    time.sleep(10)
 
     todos_los_filtros = []
     for f in filtros:
@@ -99,6 +107,7 @@ try:
     st.write('-------------------------------------------------------------------------')
     st.write('--------------------HAGO UNOS CHEQUEOS-----------------------------------')
 
+    time.sleep(3)
 
     duplicados = descargar_segmento(cursor, 'DUPLICADOS', cond="'" + f + "'")
     if len(duplicados) > 0:
@@ -112,17 +121,23 @@ try:
         st.write('')
         st.write('No hay duplicados de items-local')
 
+    time.sleep(3)
+
     checks = descargar_segmento(cursor, query='TOTAL', cond="'" + f + "'")
     checks.columns = checks.columns.str.lower()
     checks.integrantes_familia = checks.integrantes_familia.astype('int64')
 
     st.write('Hay un total de ', len(checks), ' combinaciones local sin aplicar filtros')
 
+    time.sleep(3)
+
     familia = checks[checks.integrantes_familia > 1]
     st.write('Hay ', len(familia[['familia', 'geog_locl_cod']].drop_duplicates()),
              ' combinaciones familia-local')
     st.write('Generan un total de ', len(familia[['orin', 'geog_locl_cod']]),
              ' combinaciones item-local')
+
+    time.sleep(3)
 
     ex = checks[checks.excluido_comercial == 1]
     if len(ex[['orin', 'geog_locl_cod']]) > 0:
@@ -132,11 +147,15 @@ try:
     else:
         st.write('No hay items excluidos por comercial para cargar')
 
+    time.sleep(3)
+
     promo = checks[checks.esta_en_promo == 1]
     if len(promo[['orin', 'geog_locl_cod']]) > 0:
         st.write('Hay ', len(promo[['orin', 'geog_locl_cod']]), ' combinaciones item-local en promo')
     else:
         st.write('No hay items en promo')
+
+    time.sleep(3)
 
     activo = checks[checks.estado != 4]
     if len(activo[['orin', 'geog_locl_cod']]) > 0:
@@ -144,6 +163,8 @@ try:
                  ' combinaciones item-local no activas')
     else:
         st.write('Todas las combinaciones estan activas')
+
+    time.sleep(3)
 
     precio = checks[checks.precio_diferente == 0]
     st.write('Hay ', len(precio[['orin', 'geog_locl_cod']]),
@@ -212,6 +233,8 @@ FROM
     # cursor.execute(query)
     st.write('INSERT 2')
 
+    time.sleep(3)
+
     #ULTIMO CHEQUEO
     final = descargar_segmento(cursor, query='FINAL', cond="'" + f + "'")
     final.columns = final.columns.str.upper()
@@ -219,6 +242,8 @@ FROM
 
     st.write('')
     st.write('Finalmente quedaron ', len(final), ' combinaciones para impactar')
+
+    time.sleep(3)
 
     #genero archivos para la web
     datos = descargar_segmento(cursor, 'DATOS', cond="'" + f + "'")
@@ -235,6 +260,8 @@ FROM
     st.write('Combinaciones por local:')
     st.dataframe(d)
 
+    time.sleep(3)
+
     st.write('')
     st.write('Archivo a cargar:')
     st.dataframe(datos)
@@ -243,10 +270,12 @@ FROM
     if borrado == '':
         st.stop()
     elif borrado=='no':
-        # cursor.execute(f"DELETE FROM SANDBOX_PLUS.DWH.RECOPILACION_MODIFICACIONES_PRECIOS_BIS WHERE TABLA='{f}'")
+        cursor.execute(f"DELETE FROM SANDBOX_PLUS.DWH.RECOPILACION_MODIFICACIONES_PRECIOS_BIS WHERE TABLA='{f}'")
         st.write('Datos descartados')
     else:
         st.write('Datos grabados')
+
+    time.sleep(3)
 
     st.write('')
     st.write("Programa finalizado. Manteniéndose abierto...")

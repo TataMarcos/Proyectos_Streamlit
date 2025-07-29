@@ -41,7 +41,7 @@ try:
     # Validar que las columnas númericas contengan solo números enteros
     try:
         df['CODIGO_TIENDA'] = df['CODIGO_TIENDA'].astype('int64')
-        df['ORIN'] = df['ORIN'].astype('int64')
+        df['ORIN'] = df['ORIN'].astype('int64').astype('str')
         df['PVP_NUEVO'] = df['PVP_NUEVO'].astype('int64')
     except KeyError:
         st.write('')

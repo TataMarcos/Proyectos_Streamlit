@@ -43,6 +43,7 @@ try:
         df['CODIGO_TIENDA'] = df['CODIGO_TIENDA'].astype('int64')
         df['ORIN'] = df['ORIN'].astype('int64').astype('str')
         df['PVP_NUEVO'] = df['PVP_NUEVO'].astype('int64')
+        df['EFFECTIVE_DATE'] = df['EFFECTIVE_DATE'].dt.strftime('%Y-%m-%d')
     except KeyError:
         st.write('')
         st.write("❌ Hay un error con las columnas. Verificar las columnas numéricas.")
@@ -52,9 +53,6 @@ try:
     st.write('')
     st.write('El archivo seleccionado es asi:')
     st.dataframe(df.head())
-
-    st.write('')
-    st.write(df['EFFECTIVE_DATE'].dtype)
 
     st.write('')
     st.write('El archivo tiene un total de ', len(df), ' combinaciones para cambios de precio')

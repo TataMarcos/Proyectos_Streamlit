@@ -287,8 +287,6 @@ FROM
     time.sleep(3)
 
     st.write('')
-    st.write('Archivo a cargar:')
-    st.dataframe(datos)
     st.session_state.final_carga_precios = datos
 
 if 'final_carga_precios' in st.session_state:

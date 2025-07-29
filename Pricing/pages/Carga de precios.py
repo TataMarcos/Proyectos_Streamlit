@@ -54,6 +54,9 @@ try:
     st.dataframe(df.head())
 
     st.write('')
+    st.write(df.info())
+
+    st.write('')
     st.write('El archivo tiene un total de ', len(df), ' combinaciones para cambios de precio')
 
     if len(df[df.PVP_NUEVO==0]) > 0:

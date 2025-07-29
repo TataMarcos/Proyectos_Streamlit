@@ -90,15 +90,14 @@ if 'tabla' not in st.session_state:
         st.stop()
 
 if 'tabla' in st.session_state:
-    time.sleep(5)
+    time.sleep(2)
 else:
     st.stop()
 
 #Filtros
 if 'filtros_carga_precios' not in st.session_state:
-    filtros_posibles = {'PROMOCION':'ESTA_EN_PROMO = 0',
-                        'EXCLUIDOS COMERCIAL':'EXCLUIDO_COMERCIAL = 0',
-                        'ACTIVOS':'ARTC_ESTA_ID = 4',
+    filtros_posibles = {'EXCLUIDOS COMERCIAL':'EXCLUIDO_COMERCIAL = 0',
+                        'PROMOCION':'ESTA_EN_PROMO = 0', 'ACTIVOS':'ARTC_ESTA_ID = 4',
                         'PRECIO DIFERENTE':'S.STCK_PRECIO_VENTA_DIA_CIVA <> A.PVP_NUEVO'}
     filtros = st.multiselect('Filtros:', list(filtros_posibles.keys()), list(filtros_posibles.keys()))
 
@@ -121,75 +120,83 @@ if 'filtros_carga_precios' in st.session_state:
 else:
     st.stop()
 
-st.write('')
-st.write('')
-st.write('-------------------------------------------------------------------------')
-st.write('--------------------HAGO UNOS CHEQUEOS-----------------------------------')
-
-time.sleep(3)
-
-duplicados = descargar_segmento(cursor, 'DUPLICADOS', cond="'" + st.session_state.tabla + "'")
-if len(duplicados) > 0:
+if 'checks_carga_precios' not in st.session_state:
     st.write('')
-    st.write('Se encontraron ', len(duplicados), ' duplicados:')
     st.write('')
-    st.dataframe(duplicados)
-    st.write('')
-    st.write('Descarto los duplicados')
+    st.write('-------------------------------------------------------------------------')
+    st.write('--------------------HAGO UNOS CHEQUEOS-----------------------------------')
+
+    time.sleep(3)
+
+    duplicados = descargar_segmento(cursor, 'DUPLICADOS', cond="'" + st.session_state.tabla + "'")
+    if len(duplicados) > 0:
+        st.write('')
+        st.write('Se encontraron ', len(duplicados), ' duplicados:')
+        st.write('')
+        st.dataframe(duplicados)
+        st.write('')
+        st.write('Descarto los duplicados')
+    else:
+        st.write('')
+        st.write('No hay duplicados de items-local')
+
+    time.sleep(3)
+
+    checks = descargar_segmento(cursor, query='TOTAL', cond="'" + st.session_state.tabla + "'")
+    checks.columns = checks.columns.str.lower()
+    checks.integrantes_familia = checks.integrantes_familia.astype('int64')
+
+    st.write('Hay un total de ', len(checks), ' combinaciones local sin aplicar filtros')
+
+    time.sleep(3)
+
+    familia = checks[checks.integrantes_familia > 1]
+    st.write('Hay ', len(familia[['familia', 'geog_locl_cod']].drop_duplicates()),
+            ' combinaciones familia-local')
+    st.write('Generan un total de ', len(familia[['orin', 'geog_locl_cod']]),
+            ' combinaciones item-local')
+
+    time.sleep(3)
+
+    ex = checks[checks.excluido_comercial == 1]
+    if len(ex[['orin', 'geog_locl_cod']]) > 0:
+        st.write('Hay ', len(ex[['orin', 'geog_locl_cod']]),
+                ' combinaciones item-local excluidos por comercial')
+        st.write('Hay ', len(ex[['orin']].drop_duplicates()), 'items unicos excluidos por comercial')
+    else:
+        st.write('No hay items excluidos por comercial para cargar')
+
+    time.sleep(3)
+
+    promo = checks[checks.esta_en_promo == 1]
+    if len(promo[['orin', 'geog_locl_cod']]) > 0:
+        st.write('Hay ', len(promo[['orin', 'geog_locl_cod']]), ' combinaciones item-local en promo')
+    else:
+        st.write('No hay items en promo')
+
+    time.sleep(3)
+
+    activo = checks[checks.estado != 4]
+    if len(activo[['orin', 'geog_locl_cod']]) > 0:
+        st.write('Hay ', len(activo[['orin', 'geog_locl_cod']]), ' combinaciones item-local no activas')
+    else:
+        st.write('Todas las combinaciones estan activas')
+
+    time.sleep(3)
+
+    precio = checks[checks.precio_diferente == 0]
+    st.write('Hay ', len(precio[['orin', 'geog_locl_cod']]),
+             ' combinaciones item-local con ese mismo precio')
+    st.session_state.checks_carga_precios = True
+
+if 'checks_carga_precios' in st.session_state:
+    time.sleep(2)
 else:
-    st.write('')
-    st.write('No hay duplicados de items-local')
-
-time.sleep(3)
-
-checks = descargar_segmento(cursor, query='TOTAL', cond="'" + st.session_state.tabla + "'")
-checks.columns = checks.columns.str.lower()
-checks.integrantes_familia = checks.integrantes_familia.astype('int64')
-
-st.write('Hay un total de ', len(checks), ' combinaciones local sin aplicar filtros')
-
-time.sleep(3)
-
-familia = checks[checks.integrantes_familia > 1]
-st.write('Hay ', len(familia[['familia', 'geog_locl_cod']].drop_duplicates()),
-         ' combinaciones familia-local')
-st.write('Generan un total de ', len(familia[['orin', 'geog_locl_cod']]),
-         ' combinaciones item-local')
-
-time.sleep(3)
-
-ex = checks[checks.excluido_comercial == 1]
-if len(ex[['orin', 'geog_locl_cod']]) > 0:
-    st.write('Hay ', len(ex[['orin', 'geog_locl_cod']]),
-            ' combinaciones item-local excluidos por comercial')
-    st.write('Hay ', len(ex[['orin']].drop_duplicates()), 'items unicos excluidos por comercial')
-else:
-    st.write('No hay items excluidos por comercial para cargar')
-
-time.sleep(3)
-
-promo = checks[checks.esta_en_promo == 1]
-if len(promo[['orin', 'geog_locl_cod']]) > 0:
-    st.write('Hay ', len(promo[['orin', 'geog_locl_cod']]), ' combinaciones item-local en promo')
-else:
-    st.write('No hay items en promo')
-
-time.sleep(3)
-
-activo = checks[checks.estado != 4]
-if len(activo[['orin', 'geog_locl_cod']]) > 0:
-    st.write('Hay ', len(activo[['orin', 'geog_locl_cod']]), ' combinaciones item-local no activas')
-else:
-    st.write('Todas las combinaciones estan activas')
-
-time.sleep(3)
-
-precio = checks[checks.precio_diferente == 0]
-st.write('Hay ', len(precio[['orin', 'geog_locl_cod']]),
-         ' combinaciones item-local con ese mismo precio')
+    st.stop()
 
 #una vez validado inserto los precios en recopilacion modificaciones precio
-query = f"""
+if 'final_carga_precios' not in st.session_state:
+    query = f"""
 INSERT INTO SANDBOX_PLUS.DWH.RECOPILACION_MODIFICACIONES_PRECIOS_BIS
 WITH LIMPIO AS (
 SELECT
@@ -244,54 +251,60 @@ SELECT
     PRECIO_SUGERIDO, PVP_NUEVO AS PRECIO_NUEVO_AJUSTADO, COSTO_UNITARIO, UNIDADES_VENDIDAS_TREINTA_DIAS, VNTA_TREINTA_DIAS, STCK_AYER,
     PRIORIDAD_CANASTA, PRIORIDAD_FUENTE, FECHA_MODELO,
     ROW_NUMBER() OVER (PARTITION BY GEOG_LOCL_COD ORDER BY UNIDADES_VENDIDAS_TREINTA_DIAS DESC) AS RN,
-    NULL LIMITE_CAMBIOS, CURRENT_DATE FECHA_ANALISIS, EFFECTIVE_DATE, TABLA, '{user}' USUARIO
+    NULL AS LIMITE_CAMBIOS, CURRENT_DATE AS FECHA_ANALISIS, EFFECTIVE_DATE, TABLA, '{user}' AS USUARIO
 FROM
     FILTRO;
     """
-cursor.execute(query)
-# st.write('INSERT 2')
+    cursor.execute(query)
 
-time.sleep(3)
+    time.sleep(3)
 
-#ULTIMO CHEQUEO
-final = descargar_segmento(cursor, query='FINAL', cond="'" + st.session_state.tabla + "'")
-final.columns = final.columns.str.upper()
-st.dataframe(final)
+    #ULTIMO CHEQUEO
+    final = descargar_segmento(cursor, query='FINAL', cond="'" + st.session_state.tabla + "'")
+    final.columns = final.columns.str.upper()
+    st.dataframe(final)
 
-st.write('')
-st.write('Finalmente quedaron ', len(final), ' combinaciones para impactar')
+    st.write('')
+    st.write('Finalmente quedaron ', len(final), ' combinaciones para impactar')
 
-time.sleep(3)
+    time.sleep(3)
 
-#genero archivos para la web
-datos = descargar_segmento(cursor, 'DATOS', cond="'" + st.session_state.tabla + "'")
-datos['CHANGE_AMOUNT'] = datos['CHANGE_AMOUNT'].astype('int64')
-datos['EFFECTIVE_DATE'] = pd.to_datetime(datos['EFFECTIVE_DATE'])
+    #genero archivos para la web
+    datos = descargar_segmento(cursor, 'DATOS', cond="'" + st.session_state.tabla + "'")
+    datos['CHANGE_AMOUNT'] = datos['CHANGE_AMOUNT'].astype('int64')
+    datos['EFFECTIVE_DATE'] = pd.to_datetime(datos['EFFECTIVE_DATE'])
 
-# Cambiar el formato a día/mes/año
-datos['EFFECTIVE_DATE'] = datos['EFFECTIVE_DATE'].dt.strftime('%d/%m/%Y')
-d = datos[['LOCATION', 'EFFECTIVE_DATE',
-            'CHANGE_AMOUNT']].groupby(['LOCATION',
-                                        'EFFECTIVE_DATE']).count().reset_index().sort_values(by='CHANGE_AMOUNT', ascending=False)
-d.rename(columns={'CHANGE_AMOUNT':'COMBINACIONES'}, inplace=True)
-st.write('')
-st.write('Combinaciones por local:')
-st.dataframe(d)
+    # Cambiar el formato a día/mes/año
+    datos['EFFECTIVE_DATE'] = datos['EFFECTIVE_DATE'].dt.strftime('%d/%m/%Y')
+    d = datos[['LOCATION', 'EFFECTIVE_DATE',
+                'CHANGE_AMOUNT']].groupby(['LOCATION',
+                                            'EFFECTIVE_DATE']).count().reset_index().sort_values(by='CHANGE_AMOUNT', ascending=False)
+    d.rename(columns={'CHANGE_AMOUNT':'COMBINACIONES'}, inplace=True)
+    st.write('')
+    st.write('Combinaciones por local:')
+    st.dataframe(d)
 
-time.sleep(3)
+    time.sleep(3)
 
-st.write('')
-st.write('Archivo a cargar:')
-st.dataframe(datos)
+    st.write('')
+    st.write('Archivo a cargar:')
+    st.dataframe(datos)
+    st.session_state.final_carga_precios = datos
 
-borrado = st.text_input("Desea registrar estos precios como enviados? (si/no)").strip().lower()
-if borrado == '':
-    st.stop()
-elif borrado=='no':
-    cursor.execute(f"DELETE FROM SANDBOX_PLUS.DWH.RECOPILACION_MODIFICACIONES_PRECIOS_BIS WHERE TABLA='{st.session_state.tabla}'")
-    st.write('Datos descartados')
+if 'final_carga_precios' in st.session_state:
+    st.write('Archivo a cargar:')
+    st.dataframe(st.session_state.final_carga_precios)
+    st.write('')
+    borrado = st.text_input("Desea registrar estos precios como enviados? (si/no)").strip().lower()
+    if borrado == '':
+        st.stop()
+    elif borrado=='no':
+        cursor.execute(f"DELETE FROM SANDBOX_PLUS.DWH.RECOPILACION_MODIFICACIONES_PRECIOS_BIS WHERE TABLA='{st.session_state.tabla}'")
+        st.write('Datos descartados')
+    else:
+        st.write('Datos grabados')
 else:
-    st.write('Datos grabados')
+    st.stop()
 
 time.sleep(3)
 

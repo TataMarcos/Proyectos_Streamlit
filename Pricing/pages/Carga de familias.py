@@ -1,13 +1,9 @@
 import pandas as pd
-from utils import snowflake_login
 import time
-import pandas as pd
-import os
-from snowflake.connector.pandas_tools import write_pandas
 from datetime import datetime
 import streamlit as st
-from utils import descargar_segmento
-import psutil
+from utils import snowflake_login, descargar_segmento
+from snowflake.connector.pandas_tools import write_pandas
 
 try:
     if 'snow' not in st.session_state:
@@ -23,8 +19,6 @@ except:
     st.write('Aún no se ingresaron las credenciales')
     st.stop()
 
-f = datetime.now().strftime('%Y%m%d_%H%M%S')
-
 familias = st.button("Descargar familias actuales.")
 
 if familias:
@@ -39,70 +33,86 @@ if familias:
 
 continuar = st.button("Actualizar familias")
 if continuar:
-    #Cargamos el archivo
-    st.write('')
-    st.write('Arrastrá el archivo excel con las siguientes columnas [ITEM, FAMILIA]')
-    uploaded_file = st.file_uploader("Cargar el archivo", type="xlsx")
+    f = datetime.now().strftime('%Y%m%d_%H%M%S')
+    st.session_state.actualizar_familias = f
 
-    if uploaded_file is not None:
-        try:
-            df = pd.read_excel(uploaded_file)[['ITEM', 'FAMILIA']].astype({'ITEM':'str'})
-            df.columns = df.columns.str.upper()
-        except:
-            st.write('El archivo no tiene el formato solicitado.')
-            st.stop()
-    else:
-        st.stop()
-    
-    st.dataframe(df)
+if 'actualizar_familias' not in st.session_state:
+    st.stop()
+else:
+    st.write(st.session_state.actualizar_familias)
 
-    df = df.dropna().drop_duplicates()
+#Cargamos el archivo
+st.write('')
+st.write('Arrastrá el archivo excel con las siguientes columnas [ITEM, FAMILIA]')
+uploaded_file = st.file_uploader("Cargar el archivo", type="xlsx")
 
-    st.write("\n✅ Archivo validado correctamente.")
-    st.write('')
-    st.write('El archivo tiene ', len(df), ' combinaciones.')
-
+if uploaded_file is not None:
     try:
-        df["ITEM"] = df["ITEM"].astype('int64')
+        df = pd.read_excel(uploaded_file)[['ITEM', 'FAMILIA']].astype({'ITEM':'str'})
+        df.columns = df.columns.str.upper()
     except:
-        st.write('La columna item tiene valores no numéricos. Revisar.')
+        st.write('El archivo no tiene el formato solicitado.')
         st.stop()
+else:
+    st.stop()
 
-    df['TABLA'] = f
-    df['USUARIO'] = user
+st.dataframe(df)
 
-    df = df[['ITEM','FAMILIA','TABLA','USUARIO']]
-    st.write('El archivo a cargar queda asi:')
-    st.dataframe(df.astype('str'))
+df = df.dropna().drop_duplicates()
 
+st.write("\n✅ Archivo validado correctamente.")
+st.write('')
+st.write('El archivo tiene ', len(df), ' combinaciones.')
+
+try:
+    df["ITEM"] = df["ITEM"].astype('int64').astype('str')
+except:
+    st.write('La columna item tiene valores no numéricos. Revisar.')
+    st.stop()
+
+df['TABLA'] = st.session_state.actualizar_familias
+df['USUARIO'] = user
+
+df = df[['ITEM', 'FAMILIA', 'TABLA', 'USUARIO']]
+st.write('')
+st.write('El archivo a cargar queda asi:')
+st.dataframe(df)
+
+if 'familias_carga' not in st.session_state:
     try:
-        # success, nchunks, nrows, _ = write_pandas(snow, df, database='SANDBOX_PLUS', schema='DWH',
-        #                                           table_name='INPUT_RELACIONES_ITEM_PARENT_ACTUALIZADOS')
-        # st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
-        st.write('INSERT')
-    except:
-        st.write('Falló la carga')
+        success, nchunks, nrows, _ = write_pandas(snow, df, database='SANDBOX_PLUS', schema='DWH',
+                                                table_name='INPUT_RELACIONES_ITEM_PARENT_ACTUALIZADOS')
+        st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
+        st.session_state.familias_carga = True
+    except Exception as e:
+        st.write(f"Error al cargar en Snowflake: {e}")
         st.stop()
 
+if 'familias_carga' in st.session_state:
+    st.write('')
     st.write('Ahora voy a actualizar la info en la base de datos')
+    time.sleep(3)
+else:
+    st.stop()
 
-    # qa=f"""
-    # MERGE INTO SANDBOX_PLUS.DWH.RELACIONES_ITEM_PARENT_ACTUALIZADOS AS TARGET
-    # USING (
-    #     SELECT
-    #         DISTINCT ITEM, FAMILIA
-    #     FROM
-    #         SANDBOX_PLUS.DWH.INPUT_RELACIONES_ITEM_PARENT_ACTUALIZADOS
-    #     WHERE
-    #         TABLA='{f}') AS SOURCE
-    # ON
-    #     TARGET.ITEM = SOURCE.ITEM
-    # WHEN MATCHED THEN 
-    #     UPDATE SET TARGET.FAMILIA = SOURCE.FAMILIA
-    # WHEN NOT MATCHED THEN 
-    #     INSERT (ITEM, FAMILIA) VALUES (SOURCE.ITEM, SOURCE.FAMILIA);"""
+qa=f"""
+MERGE INTO SANDBOX_PLUS.DWH.RELACIONES_ITEM_PARENT_ACTUALIZADOS AS TARGET
+USING (
+    SELECT
+        DISTINCT ITEM, FAMILIA
+    FROM
+        SANDBOX_PLUS.DWH.INPUT_RELACIONES_ITEM_PARENT_ACTUALIZADOS
+    WHERE
+        TABLA='{st.session_state.actualizar_familias}') AS SOURCE
+ON
+    TARGET.ITEM = SOURCE.ITEM
+WHEN MATCHED THEN 
+    UPDATE SET TARGET.FAMILIA = SOURCE.FAMILIA
+WHEN NOT MATCHED THEN 
+    INSERT (ITEM, FAMILIA) VALUES (SOURCE.ITEM, SOURCE.FAMILIA);"""
 
-    # result = cursor.execute(qa)
-    # st.write("Se actualizaron ", result.rowcount, " lineas")
-    st.write('MERGE')
-    st.write('Fin del programa')
+result = cursor.execute(qa)
+st.write("Se actualizaron ", result.rowcount, " lineas")
+
+st.write('')
+st.write("Programa finalizado. Manteniéndose abierto...")

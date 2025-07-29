@@ -1,9 +1,6 @@
 import pandas as pd
-import os
 from utils import snowflake_login, descargar_segmento
 import streamlit as st
-import time
-import psutil
 
 st.title('Consulta de precios')
 

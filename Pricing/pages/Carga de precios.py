@@ -1,10 +1,9 @@
 import pandas as pd
 import time
-import pandas as pd
-from utils import snowflake_login, descargar_segmento
-from snowflake.connector.pandas_tools import write_pandas
 from datetime import datetime
 import streamlit as st
+from utils import snowflake_login, descargar_segmento
+from snowflake.connector.pandas_tools import write_pandas
 
 st.title('Carga de precios')
 

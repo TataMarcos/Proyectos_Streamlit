@@ -54,7 +54,7 @@ try:
     st.dataframe(df.head())
 
     st.write('')
-    st.write(df.info())
+    st.write(df['EFFECTIVE_DATE'].dtype)
 
     st.write('')
     st.write('El archivo tiene un total de ', len(df), ' combinaciones para cambios de precio')

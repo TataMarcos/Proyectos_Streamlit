@@ -22,6 +22,7 @@ except:
 familias = st.button("Descargar familias actuales.")
 
 if familias:
+    
     familias_previas = descargar_segmento(cursor, 'FAMILIAS')
 
     # Convertir ITEM a entero

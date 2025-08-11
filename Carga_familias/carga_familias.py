@@ -46,9 +46,9 @@ try:
         st.session_state.cursor = cursor
         st.session_state.snow = snow
     else:
-        snow = st.session_state.snow  # Reuse the existing Snowflake session
         user = st.session_state.user
         cursor = st.session_state.cursor
+        snow = st.session_state.snow  # Reuse the existing Snowflake session
 except:
     st.write('Aún no se ingresaron credenciales')
 

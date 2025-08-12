@@ -82,9 +82,6 @@ if 'flujo' not in st.session_state:
         if evento_comercial_position:
             break
 
-    evento_comercial_position
-    juli0.iloc[evento_comercial_position]
-
     add_nombre_evento = (0, 2)
     nombre_evento_position = (evento_comercial_position[0] + add_nombre_evento[0], evento_comercial_position[1] + add_nombre_evento[1])
     nombre_evento = juli0.iloc[nombre_evento_position]
@@ -387,9 +384,18 @@ if 'flujo' not in st.session_state:
     st.write('Listo')
 
     st.write('')
-    st.write('REALIZAR MODIFICACIONES MANUALES')
+    st.write('REALIZAR LAS SIGUIENTES MODIFICACIONES MANUALES:')
+    st.write('1. Cargar excel ubicado en Unidades compartidas/Inteligencia de Negocio/GO en la carpeta compartida https://drive.google.com/drive/folders/1pLSwf3-JAsrxSZekprBL-6tDm6D12P11')
+    st.write('2. Abrirlo y guardarlo como Hoja de cálculo de Google')
+    st.write('3. Mover excel (.xlsx) a Respaldos Leo. Dejar en GO únicamente la Google sheet')
+    st.write('4. Abrir la Google Sheet y bloquear los headers, las columnas en rojo y las columnas en violeta (excepto la de comentarios)')
+    st.write('5. Cerrar pestaña y continuar.')
     st.write('')
-    st.session_state.flujo = carga
+    st.session_state.flujo = nombre_evento
+    st.session_state.carga = carga
+else:
+    carga = st.session_state.carga
+    nombre_evento = st.session_state.flujo
 
 if 'flujo' not in st.session_state:
     st.stop()
@@ -397,21 +403,47 @@ if 'flujo' not in st.session_state:
 if 'go_mails' not in st.session_state:
     cont = st.button('Continuar y preparar mail')
     if cont:
-        mails_comp = mails['receivers'] + list(st.session_state.flujo['CORREO'].unique())
+        mails_comp = mails['receivers'] + list(carga['CORREO'].unique())
         st.session_state.go_mails = mails_comp
     else:
         st.stop()
 
+#Definimos datos para enviar mail
 try:
-    if 'go_time' not in st.session_state:
-        st.session_state.go_mail = st.text_input('Ingrese su mail:')
-        st.session_state.go_day = st.text_input('Ingrese día de la semana de fin de edición del drive:')
-        st.session_state.go_date = st.text_input('Ingrese fecha de fin de edición del drive:')
-        st.session_state.go_time = st.text_input('Ingrese hora de fin de edición del drive:')
+    if 'go_mail' not in st.session_state:
+        go_mail = st.text_input('Ingrese su mail:')
+        if go_mail == '':
+            st.stop()
+        else:
+            st.session_state.go_mail = go_mail
     else:
-        go_day = st.session_state.go_day  # Reuse the existing Snowflake session
-        go_date = st.session_state.go_date
         go_mail = st.session_state.go_mail
+
+    if 'go_day' not in st.session_state:
+        go_day = st.text_input('Ingrese día de la semana de fin de edición del drive:')
+        if go_day == '':
+            st.stop()
+        else:
+            st.session_state.go_day = go_day
+    else:
+        go_day = st.session_state.go_day
+
+    if 'go_date' not in st.session_state:
+        go_date = st.text_input('Ingrese fecha de fin de edición del drive:')
+        if go_date == '':
+            st.stop()
+        else:
+            st.session_state.go_date = go_date
+    else:
+        go_date = st.session_state.go_date
+
+    if 'go_time' not in st.session_state:
+        go_time = st.text_input('Ingrese hora de fin de edición del drive:')
+        if go_time == '':
+            st.stop()
+        else:
+            st.session_state.go_time = go_time
+    else:
         go_time = st.session_state.go_time
 except:
     st.write('Aún no se ingresaron datos para enviar el email')

@@ -48,10 +48,17 @@ def renombrar_columnas(col_name):
         return f'DESCRIPCION'
     else:
         return col_name
-
-url = st.text_input('Ingrese url del drive de cabeceras')
-sheet = url.split('/')[-2]
-gs = gc.open_by_key(sheet)
+try:
+    url = st.text_input('Ingrese url del drive de cabeceras')
+    sheet = url.split('/')[-2]
+    gs = gc.open_by_key(sheet)
+except PermissionError:
+    st.write('Recordar dar permisos al siguiente usuario:')
+    st.write('cuenta-para-flujo-promos@copper-eye-403311.iam.gserviceaccount.com')
+    st.stop()
+except:
+    st.write('Aún no se ingresó una url correcta')
+    st.stop()
 
 meses = {"Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6, "Julio": 7,
          "Agosto": 8, "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12}

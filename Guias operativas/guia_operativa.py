@@ -43,11 +43,15 @@ except:
     st.stop()
 
 if 'flujo' not in st.session_state:
-    url = st.text_input('Ingrese la url de la promoción:')
+    try:
+        url = st.text_input('Ingrese la url de la promoción:')
 
-    codigo_url = url.split('/')[-2]     #Obtenemos el codigo del drive
+        codigo_url = url.split('/')[-2]     #Obtenemos el codigo del drive
 
-    gs = gc.open_by_key(codigo_url)     #Leemos
+        gs = gc.open_by_key(codigo_url)     #Leemos
+    except:
+        st.write('Aún no se ingresó una url válida')
+        st.stop()
 
     try:                                        #Leemos la solapa que necesitamos
         worksheetL = gs.worksheet('Listado')
@@ -200,11 +204,11 @@ if 'flujo' not in st.session_state:
     JOIN
         SANDBOX_PLUS.DWH.FORMATO_LOCALES_CON_LCL_ID F
     ON F.GEOG_LOCL_ID = B.GEOG_LOCL_ID
-    JOIN
+    LEFT JOIN
         BIZMETRIKS.DWH.FT_VENTA_BASAL AS FVB
-    ON FVB.ARTC_ARTC_ID = B.ARTC_ARTC_ID AND FVB.GEOG_LOCL_ID = B.GEOG_LOCL_ID
+    ON FVB.ARTC_ARTC_ID = B.ARTC_ARTC_ID AND FVB.GEOG_LOCL_ID = B.GEOG_LOCL_ID AND FVB.TIEM_DIA_ID >= DATEADD(DAYS, -30, CURRENT_DATE)
     WHERE
-        F.FORMATO = 'HIPER' AND FVB.TIEM_DIA_ID >= DATEADD(DAYS, -30, CURRENT_DATE)
+        F.FORMATO = 'HIPER'
     GROUP BY ALL;
     '''
 
@@ -278,14 +282,12 @@ if 'flujo' not in st.session_state:
         SANDBOX_PLUS.DWH.FORMATO_LOCALES_CON_LCL_ID F
     ON
         F.GEOG_LOCL_ID = B.GEOG_LOCL_ID
-    JOIN
+    LEFT JOIN
         BIZMETRIKS.DWH.FT_VENTA_BASAL AS FVB
     ON
-        FVB.ARTC_ARTC_ID = B.ARTC_ARTC_ID AND FVB.GEOG_LOCL_ID = B.GEOG_LOCL_ID
+        FVB.ARTC_ARTC_ID = B.ARTC_ARTC_ID AND FVB.GEOG_LOCL_ID = B.GEOG_LOCL_ID AND FVB.TIEM_DIA_ID >= DATEADD(DAYS, -30, CURRENT_DATE)
     WHERE
         (F.FORMATO = 'SUPER' OR F.GEOG_LOCL_COD IN (141, 335))
-    AND
-        FVB.TIEM_DIA_ID >= DATEADD(DAYS, -30, CURRENT_DATE)
     GROUP BY ALL;
     '''
 
@@ -387,20 +389,18 @@ if 'flujo' not in st.session_state:
     st.write('')
     st.write('REALIZAR MODIFICACIONES MANUALES')
     st.write('')
-    st.session_state.flujo = True
+    st.session_state.flujo = carga
 
 if 'flujo' not in st.session_state:
     st.stop()
 
 if 'go_mails' not in st.session_state:
     cont = st.button('Continuar y preparar mail')
-    mails_comp = mails['receivers'] + list(carga['CORREO'].unique())
-    st.session_state.go_mails = mails_comp
-
-if not(cont) and 'go_cont' not in st.session_state:
-    st.stop()
-else:
-    st.session_state.go_cont = True
+    if cont:
+        mails_comp = mails['receivers'] + list(st.session_state.flujo['CORREO'].unique())
+        st.session_state.go_mails = mails_comp
+    else:
+        st.stop()
 
 try:
     if 'go_time' not in st.session_state:
@@ -411,8 +411,8 @@ try:
     else:
         go_day = st.session_state.go_day  # Reuse the existing Snowflake session
         go_date = st.session_state.go_date
-        go_time = st.session_state.go_time
         go_mail = st.session_state.go_mail
+        go_time = st.session_state.go_time
 except:
     st.write('Aún no se ingresaron datos para enviar el email')
     st.stop()

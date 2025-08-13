@@ -14,6 +14,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 import smtplib
+import streamlit as st
 
 def get_credentials(type: str) -> dict:
 
@@ -27,35 +28,33 @@ def get_credentials(type: str) -> dict:
 
     return credentials
 
-def snowflake_login(user: str, password: str, account: str):
-
-    print('')
-    print('Conexion Snowflake')
-
+#Función para loguearse
+def snowflake_login():
     counter = 0
-
     while True:
         if counter + 1 < 4:
             print(f"Intento {counter + 1}")
 
             try:
-
-                pass_ = input("INGRESAR PASSCODE: ")
+                user = st.text_input("INGRESAR USUARIO: ")
+                psw = st.text_input("INGRESAR CONTRASEÑA: ")
+                pass_ = st.text_input("INGRESAR PASSCODE: ")
+                # user = input("INGRESAR USUARIO: ")
+                # psw = input("INGRESAR CONTRASEÑA: ")
+                # pass_ = input("INGRESAR PASSCODE: ")
 
                 # Establish Snowflake connection
                 snowflake_connection = snowflake.connector.connect(
                     user=user,
-                    password=password,
-                    account=account,
+                    password=psw,
+                    account="XZ23267-dp32414",
                     passcode=pass_,
                     database='SANDBOX_PLUS',
                     schema='DWH'
                 )
-
                 cursor = snowflake_connection.cursor()
 
                 print('Correct Password - connected to SNOWFLAKE')
-
                 break
 
             except FileNotFoundError:
@@ -68,12 +67,9 @@ def snowflake_login(user: str, password: str, account: str):
                 counter += 1
                 print(f'Error: {e}')
                 print('Incorrect Password - provide again')
-
         else:
             print('3 Intentos fallidos')
             break
-
-    print('')
 
     return user, cursor, snowflake_connection
 

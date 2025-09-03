@@ -3,17 +3,21 @@ from utils import snowflake_login, carga_snow_generic, descargar_segmento, clean
 import streamlit as st
 from datetime import date
 
-st.title('ACTUALIZACION DE MARGENES OBJETIVO')
+st.title('Actualización de márgenes objetivo')
 
-if 'snow' not in st.session_state:
-    user, cursor, snow = snowflake_login()
-    st.session_state.user = user
-    st.session_state.cursor = cursor
-    st.session_state.snow = snow
-else:
-    snow = st.session_state.snow  # Reuse the existing Snowflake session
-    user = st.session_state.user
-    cursor = st.session_state.cursor
+try:
+    if 'snow' not in st.session_state:
+        user, cursor, snow = snowflake_login()
+        st.session_state.user = user
+        st.session_state.cursor = cursor
+        st.session_state.snow = snow
+    else:
+        snow = st.session_state.snow  # Reuse the existing Snowflake session
+        user = st.session_state.user
+        cursor = st.session_state.cursor
+except:
+    st.write('Aún no se ingresaron las credenciales')
+    st.stop()
 
 #Cargamos el archivo
 st.write('Arrastrá el archivo excel con las siguientes columnas [ORIN,MARGEN OBJETIVO]')
@@ -52,10 +56,10 @@ if sub:
     df_hist['ULTIMA_ACTUALIZACION'] = date.today().strftime('%Y-%m-%d')
     df_hist['REALIZADA_POR'] = user
     st.write('Subiendo los datos. No cierre el programa.')
-    # success = carga_snow_generic(df=df_hist, ctx=snow, database='SANDBOX_PLUS', schema='DWH',
-    #                              table='INPUT_PRICING_MARGEN_OBJETIVO_HISTORICO')
-    # clean_table(cursor=cursor, table='INPUT_PRICING_MARGEN_OBJETIVO')
-    # success = carga_snow_generic(df=df_final, ctx=snow, table='INPUT_PRICING_MARGEN_OBJETIVO',
-    #                              database='SANDBOX_PLUS', schema='DWH')
-    if True:# success:
+    success = carga_snow_generic(df=df_hist, ctx=snow, database='SANDBOX_PLUS', schema='DWH',
+                                 table='INPUT_PRICING_MARGEN_OBJETIVO_HISTORICO')
+    clean_table(cursor=cursor, table='INPUT_PRICING_MARGEN_OBJETIVO')
+    success = carga_snow_generic(df=df_final, ctx=snow, table='INPUT_PRICING_MARGEN_OBJETIVO',
+                                 database='SANDBOX_PLUS', schema='DWH')
+    if success:
         st.write('Márgenes actualizados')

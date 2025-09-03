@@ -1,5 +1,5 @@
 # Usa Python
-FROM python:3.12.4-slim
+FROM python:3.9.15-slim
 
 # Directorio de la app
 WORKDIR /app

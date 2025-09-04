@@ -111,7 +111,7 @@ st.write('Fecha inicio de liquidación: ' + fini)
 st.write('Fecha fin de liquidación: ' + ffin)
 
 if 'nev' not in st.session_state:
-    nev = st.text_input('Ingrese el nombre de evento:')
+    nev = st.text_input('Ingrese el número de evento:')
     try:
         if len(nev) >= 4:
             nev = int(nev)
@@ -144,6 +144,7 @@ df_liq['PROM_FECHA_FIN'] = pd.to_datetime(df_liq['PROM_FECHA_FIN'], dayfirst=Tru
 df_liq['PROM_PVP_OFERTA'] = df_liq['PROM_PVP_OFERTA'].apply(price)
 st.dataframe(df_liq)
 try:
-    df_liq.to_excel('G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar/' + sheet + '.xlsx', index=False)
+    df_liq.to_excel('G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar/' +
+                    sheet.replace('/', '-') + '.xlsx', index=False)
 except:
     st.write('Descargar la tabla y guardarla en G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar')

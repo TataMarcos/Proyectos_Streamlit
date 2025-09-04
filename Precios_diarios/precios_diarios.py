@@ -6,6 +6,7 @@ import streamlit as st
 import time
 import psutil
 import keyboard
+from datetime import datetime, timedelta
 
 #Función para loguearse
 def snowflake_login():
@@ -63,7 +64,7 @@ def snowflake_login():
     return user, cursor, snowflake_connection
 
 def descargar_segmento(cursor: snowflake.connector.cursor.SnowflakeCursor,
-                       query: str, cond = None) -> pd.DataFrame:
+                       query: str, conds:list) -> pd.DataFrame:
 
     # Obtengo json con directorio de queries y su orden
     query_path = query + '.sql'
@@ -72,12 +73,15 @@ def descargar_segmento(cursor: snowflake.connector.cursor.SnowflakeCursor,
     with open(query_path, 'r', encoding="utf8") as file: command = file.read()
 
     # Ejecuto query para obtener clientes que superaron la promo
-    if not(cond):
+    if len(conds) == 0:
         cursor.execute(command)
-        #command = command
+    elif len(conds) == 1:
+        cond = conds[0]
+        cursor.execute(command.format(cond=cond))
     else:
-        cursor.execute(command.replace(';', cond))
-        #command = command.replace(';', cond)
+        cond = conds[0]
+        cond2 = conds[1]
+        cursor.execute(command.format(cond=cond, cond2=cond2))
 
     # Obtenemos el resultado de la consulta del cursor en una dataframe de pandas
     df = cursor.fetch_pandas_all()
@@ -95,6 +99,20 @@ else:
     snow = st.session_state.snow  # Reuse the existing Snowflake session
     user = st.session_state.user
     cursor = st.session_state.cursor
+
+if 'snow' not in st.session_state:
+    st.stop()
+
+#Aramamos listado de fechas
+fechas = []
+for i in range((datetime.today().date() - datetime.today().replace(year=datetime.today().date().year - 1).date()).days):
+    fechas.append("'" + (datetime.today().replace(year=datetime.today().date().year - 1).date()
+                         + timedelta(days=i)).strftime('%Y-%m-%d') + "'")
+fechas.reverse()
+
+#Seleccionamos la fecha
+fecha = st.selectbox('Seleccione fecha:', options=fechas)
+st.write(fecha)
 
 #Cargamos el archivo
 uploaded_file = st.file_uploader("Cargar el archivo", type="xlsx")
@@ -116,7 +134,10 @@ try:
     items += "')"
 
     c = ' AND LGL.GEOG_LOCL_COD IN ' + loc + " AND LAA.ORIN IN " + items + ';'
-    df = descargar_segmento(cursor=cursor, query='PRECIOS', cond=c).astype({'ORIN':str, 'LOCAL':str})
+    conds = []
+    conds.append(c)
+    conds.append(fecha)
+    df = descargar_segmento(cursor=cursor, query='PRECIOS', conds=conds).astype({'ORIN':str, 'LOCAL':str})
 
     price['ORIN'] = price['ITEM'].apply(str)
     price['LOCAL'] = price['LOCAL'].apply(str)
@@ -126,7 +147,7 @@ try:
     #Mostramos el dataframe final
     st.dataframe(df_final)
 except:
-    st.write('Todavía no se cargó el archivo o se acargó un archivo con un formato erróneo')
+    st.write('Todavía no se cargó el archivo o se cargó un archivo con un formato erróneo')
 
 #Armamos bloque para cerrar el programa
 exit_app = st.button("Cerrar el programa.")

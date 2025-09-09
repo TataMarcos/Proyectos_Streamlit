@@ -138,13 +138,13 @@ df2['PROM_LOCAL_ACTIVO'] = 0
 df2['PROM_ESTIBA'] = 0
 df_liq = df2[['PROM_FECHA_INICIO', 'PROM_FECHA_FIN', 'ARTC_ARTC_COD', 'EVENTO_ID', 'PRONOSTICO_VENTA',
                 'STOCK_INICIAL_PROMO', 'GEOG_LOCL_COD', 'PROM_PVP_OFERTA', 'PROM_LOCAL_ACTIVO',
-                'PROM_ESTIBA']].astype({'GEOG_LOCL_COD':'str', 'ARTC_ARTC_COD':'str'})
+                'PROM_ESTIBA', 'ORIN']].astype({'GEOG_LOCL_COD':'str', 'ARTC_ARTC_COD':'str'})
 df_liq['PROM_FECHA_INICIO'] = pd.to_datetime(df_liq['PROM_FECHA_INICIO'], dayfirst=True)
 df_liq['PROM_FECHA_FIN'] = pd.to_datetime(df_liq['PROM_FECHA_FIN'], dayfirst=True)
 df_liq['PROM_PVP_OFERTA'] = df_liq['PROM_PVP_OFERTA'].apply(price)
 st.dataframe(df_liq)
 try:
-    df_liq.to_excel('G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar/' +
-                    sheet.replace('/', '-') + '.xlsx', index=False)
+    df_liq.to_csv('G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar/' +
+                    sheet.replace('/', '-') + '.xlsx')
 except:
     st.write('Descargar la tabla y guardarla en G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar')

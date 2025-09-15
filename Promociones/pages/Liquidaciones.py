@@ -145,6 +145,7 @@ df_liq['PROM_PVP_OFERTA'] = df_liq['PROM_PVP_OFERTA'].apply(price)
 st.dataframe(df_liq)
 try:
     df_liq.to_csv('G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar/' +
-                    sheet.replace('/', '-') + '.xlsx')
+                    sheet.replace('/', '-') + '.csv')
+    st.write('Tabla guardada')
 except:
     st.write('Descargar la tabla y guardarla en G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar')

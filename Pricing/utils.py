@@ -51,21 +51,24 @@ def snowflake_login():
     return user, cursor, snowflake_connection
 
 def descargar_segmento(cursor: snowflake.connector.cursor.SnowflakeCursor,
-                       query: str, cond = None) -> pd.DataFrame:
+                       query: str, conds=[]) -> pd.DataFrame:
 
     # Obtengo json con directorio de queries y su orden
-    query_path = 'Queries/' + query + '.sql'
+    query_path = query + '.sql'
 
     # Obtengo el texto de mi query
     with open(query_path, 'r', encoding="utf8") as file: command = file.read()
 
     # Ejecuto query para obtener clientes que superaron la promo
-    if not(cond):
+    if len(conds) == 0:
         cursor.execute(command)
-        #command = command
-    else:
+    elif len(conds) == 1:
+        cond = conds[0]
         cursor.execute(command.format(cond=cond))
-        #command = command.replace(';', cond)
+    else:
+        cond = conds[0]
+        cond2 = conds[1]
+        cursor.execute(command.format(cond=cond, cond2=cond2))
 
     # Obtenemos el resultado de la consulta del cursor en una dataframe de pandas
     df = cursor.fetch_pandas_all()

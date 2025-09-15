@@ -126,8 +126,11 @@ if 'checks_carga_precios' not in st.session_state:
     st.write('--------------------HAGO UNOS CHEQUEOS-----------------------------------')
 
     time.sleep(3)
+    
+    conds = []
+    conds.append("'" + st.session_state.tabla + "'")
 
-    duplicados = descargar_segmento(cursor, 'DUPLICADOS', cond="'" + st.session_state.tabla + "'")
+    duplicados = descargar_segmento(cursor, 'DUPLICADOS', conds=conds)
     if len(duplicados) > 0:
         st.write('')
         st.write('Se encontraron ', len(duplicados), ' duplicados:')
@@ -141,7 +144,7 @@ if 'checks_carga_precios' not in st.session_state:
 
     time.sleep(3)
 
-    checks = descargar_segmento(cursor, query='TOTAL', cond="'" + st.session_state.tabla + "'")
+    checks = descargar_segmento(cursor, query='TOTAL', conds=conds)
     checks.columns = checks.columns.str.lower()
     checks.integrantes_familia = checks.integrantes_familia.astype('int64')
 
@@ -259,7 +262,7 @@ FROM
     time.sleep(3)
 
     #ULTIMO CHEQUEO
-    final = descargar_segmento(cursor, query='FINAL', cond="'" + st.session_state.tabla + "'")
+    final = descargar_segmento(cursor, query='FINAL', conds=conds)
     final.columns = final.columns.str.upper()
     st.dataframe(final)
 
@@ -269,7 +272,7 @@ FROM
     time.sleep(3)
 
     #genero archivos para la web
-    datos = descargar_segmento(cursor, 'DATOS', cond="'" + st.session_state.tabla + "'")
+    datos = descargar_segmento(cursor, 'DATOS', conds=conds)
     datos['CHANGE_AMOUNT'] = datos['CHANGE_AMOUNT'].astype('int64')
     datos['EFFECTIVE_DATE'] = pd.to_datetime(datos['EFFECTIVE_DATE'])
 

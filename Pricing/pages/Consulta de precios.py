@@ -1,6 +1,7 @@
 import pandas as pd
 from utils import snowflake_login, descargar_segmento
 import streamlit as st
+from datetime import datetime, timedelta
 
 st.title('Consulta de precios')
 
@@ -17,6 +18,17 @@ try:
 except:
     st.write('Aún no se ingresaron las credenciales')
     st.stop()
+
+#Aramamos listado de fechas
+fechas = []
+for i in range((datetime.today().date() - datetime.today().replace(year=datetime.today().date().year - 1).date()).days):
+    fechas.append("'" + (datetime.today().replace(year=datetime.today().date().year - 1).date()
+                         + timedelta(days=i)).strftime('%Y-%m-%d') + "'")
+fechas.reverse()
+
+#Seleccionamos la fecha
+fecha = st.selectbox('Seleccione fecha:', options=fechas)
+st.write(fecha)
 
 #Cargamos el archivo
 st.write('Arrastrá el archivo excel con las siguientes columnas [LOCAL,ITEM]')
@@ -44,8 +56,11 @@ try:
     items += "')"
 
     #Descargamos de snow
-    c = 'WHERE LGL.GEOG_LOCL_COD IN ' + loc + " AND LAA.ORIN IN " + items
-    df = descargar_segmento(cursor=cursor, query='PRECIOS', cond=c).astype({'ORIN':str, 'LOCAL':str})
+    c = ' AND LGL.GEOG_LOCL_COD IN ' + loc + " AND LAA.ORIN IN " + items + ';'
+    conds = []
+    conds.append(c)
+    conds.append(fecha)
+    df = descargar_segmento(cursor=cursor, query='PRECIOS', conds=conds).astype({'ORIN':str, 'LOCAL':str})
 
     price['ORIN'] = price['ITEM'].apply(str)
     price['LOCAL'] = price['LOCAL'].apply(str)

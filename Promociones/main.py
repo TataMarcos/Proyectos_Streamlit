@@ -1,10 +1,11 @@
 import keyboard
+import os
 
-keyboard.press_and_release('ctrl+w')        #Close the window
+if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\PROYECTOS_STREAMLIT\\PROMOCIONES':
+    keyboard.press_and_release('ctrl+w')        #Close the window
 
 import streamlit as st
 import time
-import os
 import psutil
 
 st.title('Promociones')

@@ -30,44 +30,79 @@ fechas.reverse()
 fecha = st.selectbox('Seleccione fecha:', options=fechas)
 st.write(fecha)
 
-#Cargamos el archivo
-st.write('Arrastrá el archivo excel con las siguientes columnas [LOCAL,ITEM]')
-uploaded_file = st.file_uploader("Cargar el archivo", type="xlsx")
+prog = st.selectbox('Seleccione el programa: ', ['ACTIVOS', 'I+D'])
 
-#Lo leemos
-if uploaded_file is None:
-    st.stop()
-if uploaded_file is not None:
-    price = pd.read_excel(uploaded_file)
-    price.columns = price.columns.str.upper()
+if prog == 'ACTIVOS':
+    #Cargamos el archivo
+    st.write('Arrastrá el archivo excel con las siguientes columnas [LOCAL,ITEM]')
+    uploaded_file = st.file_uploader("Cargar el archivo", type="xlsx")
 
-#Hacemos listado de locales y orines
-try:
-    loc = '('
-    for l in price['LOCAL'].unique():
-        loc += str(l) + ','
-    loc = loc.strip(',')
-    loc += ')'
+    #Lo leemos
+    if uploaded_file is None:
+        st.stop()
+    if uploaded_file is not None:
+        price = pd.read_excel(uploaded_file)
+        price.columns = price.columns.str.upper()
 
-    items = "('"
-    for i in price['ITEM'].unique():
-        items += str(i) + "','"
-    items = items.strip(",'")
-    items += "')"
+    #Hacemos listado de locales y orines
+    try:
+        loc = '('
+        for l in price['LOCAL'].unique():
+            loc += str(l) + ','
+        loc = loc.strip(',')
+        loc += ')'
 
-    #Descargamos de snow
-    c = ' AND LGL.GEOG_LOCL_COD IN ' + loc + " AND LAA.ORIN IN " + items + ';'
-    conds = []
-    conds.append(c)
-    conds.append(fecha)
-    df = descargar_segmento(cursor=cursor, query='PRECIOS', conds=conds).astype({'ORIN':str, 'LOCAL':str})
+        items = "('"
+        for i in price['ITEM'].unique():
+            items += str(i) + "','"
+        items = items.strip(",'")
+        items += "')"
 
-    price['ORIN'] = price['ITEM'].apply(str)
-    price['LOCAL'] = price['LOCAL'].apply(str)
+        #Descargamos de snow
+        c = ' AND LGL.GEOG_LOCL_COD IN ' + loc + " AND LAA.ORIN IN " + items + ';'
+        conds = []
+        conds.append(c)
+        conds.append(fecha)
+        df = descargar_segmento(cursor=cursor, query='PRECIOS', conds=conds).astype({'ORIN':str, 'LOCAL':str})
 
-    df_final = price[['ORIN', 'LOCAL']].merge(df, how='left')
+        price['ORIN'] = price['ITEM'].apply(str)
+        price['LOCAL'] = price['LOCAL'].apply(str)
 
-    #Mostramos el dataframe final
-    st.dataframe(df_final)
-except:
-    st.write('Se cargó un archivo con un formato erróneo')
+        df_final = price[['ORIN', 'LOCAL']].merge(df, how='left')
+
+        #Mostramos el dataframe final
+        st.dataframe(df_final)
+    except:
+        st.write('Se cargó un archivo con un formato erróneo')
+
+if prog == 'I+D':
+    #Cargamos el archivo
+    st.write('Arrastrá el archivo excel con las siguientes columnas [ITEM]')
+    uploaded_file = st.file_uploader("Cargar el archivo", type="xlsx")
+
+    #Lo leemos
+    if uploaded_file is None:
+        st.stop()
+    if uploaded_file is not None:
+        price = pd.read_excel(uploaded_file)
+        price.columns = price.columns.str.upper()
+
+    #Hacemos listado de locales y orines
+    try:
+        items = "('"
+        for i in price['ITEM'].unique():
+            items += str(i) + "','"
+        items = items.strip(",'")
+        items += "')"
+
+        #Descargamos de snow
+        c = "AND LAA.ORIN IN " + items
+        conds = []
+        conds.append(c)
+        conds.append(fecha)
+        df = descargar_segmento(cursor=cursor, query='PRECIOS - I+D', conds=conds).astype({'ORIN':str})
+
+        #Mostramos el dataframe final
+        st.dataframe(df)
+    except:
+        st.write('Se cargó un archivo con un formato erróneo')

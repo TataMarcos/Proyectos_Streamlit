@@ -54,7 +54,7 @@ def descargar_segmento(cursor: snowflake.connector.cursor.SnowflakeCursor,
                        query: str, conds=[]) -> pd.DataFrame:
 
     # Obtengo json con directorio de queries y su orden
-    query_path = query + '.sql'
+    query_path = 'Queries/' + query + '.sql'
 
     # Obtengo el texto de mi query
     with open(query_path, 'r', encoding="utf8") as file: command = file.read()

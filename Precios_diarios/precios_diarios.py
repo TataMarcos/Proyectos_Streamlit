@@ -88,7 +88,7 @@ def descargar_segmento(cursor: snowflake.connector.cursor.SnowflakeCursor,
 
     return df
 
-# keyboard.press_and_release('ctrl+w')        #Close the window
+keyboard.press_and_release('ctrl+w')        #Close the window
 
 if 'snow' not in st.session_state:
     user, cursor, snow = snowflake_login()

@@ -200,6 +200,8 @@ GROUP BY ALL;
         print(estiba, orin_values_str)
         cursor.execute(query.format(orines_snow=orin_values_str, estibas_snow=estiba))
         df_aux = cursor.fetch_pandas_all()
+        df_aux['UNIDADES_CARGA'] = df_aux['UNIDADES_CARGA'] / orin_values.size
+        df_aux['UNIDADES_CARGA'] = df_aux['UNIDADES_CARGA'].astype('int64')
         df = pd.concat([df_aux, df])
 
     print(df.shape[0])
@@ -261,6 +263,8 @@ GROUP BY ALL;
         print(estiba, orin_values_str)
         cursor.execute(query.format(orines_snow=orin_values_str, estibas_snow=estiba))
         df_aux = cursor.fetch_pandas_all()
+        df_aux['UNIDADES_CARGA'] = df_aux['UNIDADES_CARGA'] / orin_values.size
+        df_aux['UNIDADES_CARGA'] = df_aux['UNIDADES_CARGA'].astype('int64')
         df = pd.concat([df_aux, df])
 
     print(df.shape[0])

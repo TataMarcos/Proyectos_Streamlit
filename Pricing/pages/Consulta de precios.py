@@ -96,7 +96,7 @@ if prog == 'I+D':
         items += "')"
 
         #Descargamos de snow
-        c = "AND LAA.ORIN IN " + items
+        c = "WHERE LAA.ORIN IN " + items
         conds = []
         conds.append(c)
         conds.append(fecha)

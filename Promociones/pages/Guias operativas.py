@@ -326,32 +326,33 @@ GROUP BY ALL;
     time.sleep(3)
 
     # Open an existing Excel file
-    wb = xw.Book('G:/Unidades compartidas/Inteligencia de Negocio/GO/Excels/GO Base.xlsx')
-    sheet = wb.sheets[0]
+    # wb = xw.Book('G:/Unidades compartidas/Inteligencia de Negocio/GO/Excels/GO Base.xlsx')
+    # sheet = wb.sheets[0]
 
-    # Cargo la DataFrame
-    sheet["A2"].options(pd.DataFrame, header = 0, index=False, expand='table').value = carga
+    # # Cargo la DataFrame
+    # sheet["A2"].options(pd.DataFrame, header = 0, index=False, expand='table').value = carga
 
-    start_row = carga.shape[0] + 2
-    start_column = 1
-    end_column = 50
-    end_row = sheet.range((start_row, start_column)).end('down').row
+    # start_row = carga.shape[0] + 2
+    # start_column = 1
+    # end_column = 50
+    # end_row = sheet.range((start_row, start_column)).end('down').row
 
-    range_to_clear = sheet.range((start_row, start_column), (end_row, end_column))
-    range_to_clear.clear_contents()
+    # range_to_clear = sheet.range((start_row, start_column), (end_row, end_column))
+    # range_to_clear.clear_contents()
 
-    st.write('')
-    st.write(guia_operativa_descripcion)
+    # st.write('')
+    # st.write(guia_operativa_descripcion)
 
-    wb.save(f"G:/Unidades compartidas/Inteligencia de Negocio/GO/{guia_operativa_descripcion}.xlsx")
+    # wb.save(f"G:/Unidades compartidas/Inteligencia de Negocio/GO/{guia_operativa_descripcion}.xlsx")
 
-    wb.close()
+    # wb.close()
 
-    st.write('Listo')
+    # st.write('Listo')
 
     st.write('')
     st.write('REALIZAR LAS SIGUIENTES MODIFICACIONES MANUALES:')
-    st.write('1. Cargar excel ubicado en Unidades compartidas/Inteligencia de Negocio/GO en la carpeta compartida https://drive.google.com/drive/folders/1pLSwf3-JAsrxSZekprBL-6tDm6D12P11')
+    st.write('1. Copiar la tabla en GO Base.xlsx, renombrarla como ' + guia_operativa_descripcion +
+             ' y cargar en la carpeta compartida https://drive.google.com/drive/folders/1pLSwf3-JAsrxSZekprBL-6tDm6D12P11')
     st.write('2. Abrirlo y guardarlo como Hoja de cálculo de Google')
     st.write('3. Mover excel (.xlsx) a Respaldos Leo. Dejar en GO únicamente la Google sheet')
     st.write('4. Abrir la Google Sheet y bloquear los headers, las columnas en rojo y las columnas en violeta (excepto la de comentarios)')

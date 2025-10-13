@@ -18,46 +18,59 @@ def get_credentials(type: str) -> dict:
 
 #Función para loguearse
 def snowflake_login():
-    counter = 0
-    while True:
-        if counter + 1 < 4:
-            print(f"Intento {counter + 1}")
+    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\PROYECTOS_STREAMLIT\\PRICING':
 
-            try:
-                user = st.text_input("INGRESAR USUARIO: ")
-                psw = st.text_input("INGRESAR CONTRASEÑA: ")
-                pass_ = st.text_input("INGRESAR PASSCODE: ")
-                # user = input("INGRESAR USUARIO: ")
-                # psw = input("INGRESAR CONTRASEÑA: ")
-                # pass_ = input("INGRESAR PASSCODE: ")
+        user = "PLUS_VM1_NEW"
 
-                # Establish Snowflake connection
-                snowflake_connection = snowflake.connector.connect(
-                    user=user,
-                    password=psw,
-                    account="XZ23267-dp32414",
-                    passcode=pass_,
-                    database='SANDBOX_PLUS',
-                    schema='DWH'
-                )
-                cursor = snowflake_connection.cursor()
+        snowflake_connection = snowflake.connector.connect(
+            user=user,
+            password="aK09fWyh4i5oVcI9A31Ea4vXMcquhMMlIE9sXRoil3oSw9faD9",
+            account="XZ23267-dp32414",
+            database="SANDBOX_PLUS",
+            schema="DWH"
+        )
+        cursor = snowflake_connection.cursor()
+    else:
+        counter = 0
+        while True:
+            if counter + 1 < 4:
+                print(f"Intento {counter + 1}")
 
-                print('Correct Password - connected to SNOWFLAKE')
+                try:
+                    user = st.text_input("INGRESAR USUARIO: ")
+                    psw = st.text_input("INGRESAR CONTRASEÑA: ")
+                    pass_ = st.text_input("INGRESAR PASSCODE: ")
+
+                    # Establish Snowflake connection
+                    snowflake_connection = snowflake.connector.connect(
+                        user=user,
+                        password=psw,
+                        account="XZ23267-dp32414",
+                        passcode=pass_,
+                        database='SANDBOX_PLUS',
+                        schema='DWH'
+                    )
+
+                    cursor = snowflake_connection.cursor()
+
+                    print('Correct Password - connected to SNOWFLAKE')
+
+                    break
+
+                except FileNotFoundError:
+                    print("Error: 'credentials.json' file not found.")
+                    break
+                except json.JSONDecodeError:
+                    print("Error: 'credentials.json' file is not valid JSON.")
+                    break
+                except Exception as e:
+                    counter += 1
+                    print(f'Error: {e}')
+                    print('Incorrect Password - provide again')
+
+            else:
+                print('3 Intentos fallidos')
                 break
-
-            except FileNotFoundError:
-                print("Error: 'credentials.json' file not found.")
-                break
-            except json.JSONDecodeError:
-                print("Error: 'credentials.json' file is not valid JSON.")
-                break
-            except Exception as e:
-                counter += 1
-                print(f'Error: {e}')
-                print('Incorrect Password - provide again')
-        else:
-            print('3 Intentos fallidos')
-            break
 
     return user, cursor, snowflake_connection
 

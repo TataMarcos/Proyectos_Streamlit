@@ -121,5 +121,5 @@ try:
                                  database='SANDBOX_PLUS', schema='DWH')
     if success:
         st.write('Tabla subida')
-except:
-    st.write('Se cargó un archivo con un formato erróneo')
+except Exception as e:
+    st.write('Se cargó un archivo con un formato erróneo: ', e)

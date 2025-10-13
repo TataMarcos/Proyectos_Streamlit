@@ -82,16 +82,16 @@ try:
     st.json(estructura)
 
     # Guardar la estructura en un archivo JSON
-    output_path = "posicionamiento.json"
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(estructura, f, indent=4, ensure_ascii=False)
+    # output_path = "posicionamiento.json"
+    # with open(output_path, "w", encoding="utf-8") as f:
+    #     json.dump(estructura, f, indent=4, ensure_ascii=False)
 
-    st.write(f"Estructura guardada en {output_path} y enviada por mail")
+    # st.write(f"Estructura guardada en {output_path} y enviada por mail")
 
-    enviar_email(sender='marcos.larran@tata.com.uy', subject='Posicionamiento nuevo', files=[output_path],
-                 receiver=["ds-team@gdn.com.uy", 'marcela.moreira@tata.com.uy', 'nahuel.hartwig@tata.com.uy'],
-                 body='Se envía posicionamiento nuevo. Corregir y enviar a Fernando Salvarezza.')
-    os.remove(output_path)
+    # enviar_email(sender='marcos.larran@tata.com.uy', subject='Posicionamiento nuevo', files=[output_path],
+    #              receiver=["ds-team@gdn.com.uy", 'marcela.moreira@tata.com.uy', 'nahuel.hartwig@tata.com.uy'],
+    #              body='Se envía posicionamiento nuevo. Corregir y enviar a Fernando Salvarezza.')
+    # os.remove(output_path)
 
     #Realizamos correcciones manuales
     st.write('')

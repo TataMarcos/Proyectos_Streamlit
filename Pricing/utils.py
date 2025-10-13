@@ -4,6 +4,17 @@ import json
 import pandas as pd
 import streamlit as st
 from snowflake.connector.pandas_tools import write_pandas
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import smtplib
+
+def get_credentials(type: str) -> dict:
+    with open('credentials.json') as f:
+        credentials = json.load(f)[type]
+
+    return credentials
 
 #Función para loguearse
 def snowflake_login():
@@ -97,3 +108,48 @@ def clean_table(cursor, table, cond=None):
     cursor.execute(sql)
 
     return True
+
+def enviar_email(sender, receiver, subject, body, files:list):
+    smtp_server = "fast.smtpok.com"  # Reemplaza con el servidor SMTP que uses
+    smtp_port = 587  # Usualmente 587 para TLS o 465 para SSL
+    sender_email = sender                       #Reemplaza con tu email
+    credentials = get_credentials('correo_autom')
+    sender_user = credentials['USER']
+    sender_password = credentials['PASS']       #Reemplaza con tu contraseña
+    recipient_email = receiver                  #Email del destinatario
+ 
+
+    # Crear el mensaje
+    mensaje = MIMEMultipart()
+    mensaje["From"] = sender_email
+    mensaje["To"] = ", ".join(recipient_email)
+    mensaje["Subject"] = subject #"Error Maestro productos Hist"
+      
+    mensaje.attach(MIMEText(body, "plain"))
+
+    # Attach the Excel file
+    if len(files) > 0:
+        for file_path in files:
+            attachment_name = os.path.basename(file_path)
+            with open(file_path, "rb") as attachment:
+                part = MIMEBase('application', 'octet-stream')
+                part.set_payload(attachment.read())
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition', f'attachment; filename={attachment_name}')
+                mensaje.attach(part)
+    try:
+        # Conectar al servidor SMTP
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()  # Iniciar cifrado TLS
+        server.login(sender_user, sender_password)  # Autenticación
+        
+        # Enviar el correo
+        server.sendmail(sender_email, recipient_email, mensaje.as_string())
+        print("Correo enviado exitosamente.")
+        
+        # Cerrar la conexión
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Error al enviar el correo: {e}")
+        return False

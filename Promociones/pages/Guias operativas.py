@@ -285,6 +285,7 @@ GROUP BY ALL;
     df.rename({'PROM_FECHA_INICIO':'INICIO', 'PROM_FECHA_FIN':'FIN', 'ARTC_ARTC_COD':'ESTADISTICO',
             'ORIN':'ITEM', 'ARTC_ARTC_DESC':'DESCRIPCION', 'UNIDADES_CARGA':'EXHIBICION DATA',
             'MEDIAN_UNID_POR_PALLET':'UNID. X PALLET', 'VENTA_BASAL':'CONSUMO'}, axis = 1, inplace = True)
+    df['CONSUMO'] = df['CONSUMO'].apply(round).astype('int64')
     st.write('')
     st.write('Juntamos y cambiamos nombre a las columnas:')
     st.dataframe(df)

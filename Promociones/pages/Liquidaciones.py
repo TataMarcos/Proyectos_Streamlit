@@ -102,9 +102,14 @@ st.write('Tabla seleccionada:')
 st.dataframe(df)
 
 fini = datetime.today().replace(day=int(sheet.split()[1].split('/')[0]),
-                                month=int(sheet.split()[1].split('/')[1])).date().strftime(format='%d/%m/%y')
+                                month=int(sheet.split()[1].split('/')[1])).date()
 ffin = datetime.today().replace(day=int(sheet.split()[-1].split('/')[0]),
-                                month=int(sheet.split()[-1].split('/')[1])).date().strftime(format='%d/%m/%y')
+                                month=int(sheet.split()[-1].split('/')[1])).date()
+if fini>ffin:
+    ffin = ffin.replace(year=datetime.today().year + 1)
+fini = fini.strftime(format='%d/%m/%y')
+ffin = ffin.strftime(format='%d/%m/%y')
+
 st.write('')
 st.write('Controlar fecha de inicio y fin de liquidación')
 st.write('Fecha inicio de liquidación: ' + fini)

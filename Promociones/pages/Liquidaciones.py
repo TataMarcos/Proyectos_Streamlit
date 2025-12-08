@@ -147,7 +147,7 @@ df_liq = df2[['PROM_FECHA_INICIO', 'PROM_FECHA_FIN', 'ARTC_ARTC_COD', 'EVENTO_ID
 df_liq['PROM_FECHA_INICIO'] = pd.to_datetime(df_liq['PROM_FECHA_INICIO'], dayfirst=True)
 df_liq['PROM_FECHA_FIN'] = pd.to_datetime(df_liq['PROM_FECHA_FIN'], dayfirst=True)
 df_liq['PROM_PVP_OFERTA'] = df_liq['PROM_PVP_OFERTA'].apply(price)
-st.dataframe(df_liq)
+st.dataframe(df_liq.head(10))
 try:
     df_liq.to_csv('G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar/' +
                     sheet.replace('/', '-') + '.csv')

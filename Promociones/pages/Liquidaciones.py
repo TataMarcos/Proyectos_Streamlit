@@ -99,7 +99,7 @@ df = pd.DataFrame(data[1:], columns=['Local', 'Nombre Local', 'Dept', 'Group', '
                                      'Descripción', 'PVP REGULAR', 'PVP LIQUIDACION', 'DESCUENTO', 'MONEDA',
                                      'FORMA DE LIQUIDAR', 'STOCK 30/06'])
 st.write('Tabla seleccionada:')
-st.dataframe(df)
+st.dataframe(df.head(10))
 
 fini = datetime.today().replace(day=int(sheet.split()[1].split('/')[0]),
                                 month=int(sheet.split()[1].split('/')[1])).date()

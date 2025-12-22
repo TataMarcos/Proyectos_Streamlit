@@ -288,7 +288,7 @@ GROUP BY ALL;
     df['CONSUMO'] = df['CONSUMO'].fillna(0).apply(round).astype('int64')
     st.write('')
     st.write('Juntamos y cambiamos nombre a las columnas:')
-    st.dataframe(df)
+    st.dataframe(df.head(10))
     time.sleep(3)
 
     #Sumamos regionales
@@ -321,9 +321,15 @@ GROUP BY ALL;
     carga.sort_values(by=['LOCAL', 'ITEM'], inplace=True)
     carga['INICIO'] = carga['INICIO'].dt.strftime('%d/%m/%Y')
     carga['FIN'] = carga['FIN'].dt.strftime('%d/%m/%Y')
+
+    csv = carga.to_csv(index=False)
+
+    #Mostramos las primeras filas del dataframe y botón de descarga
     st.write('')
-    st.write('Armamos tabla para cargar en drive:')
-    st.dataframe(carga)
+    st.write('Armamos tabla para cargar en drive (se muestran primeras filas):')
+    st.dataframe(carga.head(10))
+    st.download_button(label='Descargar tabla', data=csv, file_name='Participación.csv',
+                       mime='text/csv')
     time.sleep(3)
 
     # Open an existing Excel file

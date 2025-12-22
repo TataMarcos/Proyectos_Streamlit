@@ -30,9 +30,12 @@ if familias:
     # Convertir ITEM a entero
     familias_previas["ITEM"] = familias_previas["ITEM"].astype('int64')
     
-    st.write('Familias actuales:')
+    #Mostramos las primeras filas del dataframe y botón de descarga
+    st.write('Familias actuales (primeras 10 filas):')
     st.write('')
-    st.dataframe(familias_previas)
+    st.dataframe(familias_previas.head(10))
+    csv = familias_previas.to_csv(index=False)
+    st.download_button(label='Descargar tabla', data=csv, file_name='Familias.csv', mime='text/csv')
 
 continuar = st.button("Actualizar familias")
 if continuar:

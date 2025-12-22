@@ -98,7 +98,7 @@ data = worksheetL.get_all_values()
 df = pd.DataFrame(data[1:], columns=['Local', 'Nombre Local', 'Dept', 'Group', 'CLASS_NAME', 'SUB_NAME', 'ORIN',
                                      'Descripción', 'PVP REGULAR', 'PVP LIQUIDACION', 'DESCUENTO', 'MONEDA',
                                      'FORMA DE LIQUIDAR', 'STOCK 30/06'])
-st.write('Tabla seleccionada:')
+st.write('Tabla seleccionada (se muestran las primeras 10 filas):')
 st.dataframe(df.head(10))
 
 fini = datetime.today().replace(day=int(sheet.split()[1].split('/')[0]),
@@ -148,9 +148,13 @@ df_liq['PROM_FECHA_INICIO'] = pd.to_datetime(df_liq['PROM_FECHA_INICIO'], dayfir
 df_liq['PROM_FECHA_FIN'] = pd.to_datetime(df_liq['PROM_FECHA_FIN'], dayfirst=True)
 df_liq['PROM_PVP_OFERTA'] = df_liq['PROM_PVP_OFERTA'].apply(price)
 st.dataframe(df_liq.head(10))
+
 try:
     df_liq.to_csv('G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar/' +
                     sheet.replace('/', '-') + '.csv')
     st.write('Tabla guardada')
 except:
     st.write('Descargar la tabla y guardarla en G:/Unidades compartidas/Inteligencia de Negocio/Promos/Liquidaciones/Cargar')
+    csv = df_liq.to_csv(index=False)
+    st.download_button(label='Descargar tabla', data=csv, file_name=sheet.replace('/', '-') + '.csv',
+                    mime='text/csv')

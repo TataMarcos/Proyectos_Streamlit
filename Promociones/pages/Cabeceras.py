@@ -364,4 +364,9 @@ if p:
     df_final = participacion(cursor=cursor, fecha_inicio=st.session_state.df_cabeceras['FECHA_INICIO'].values[0],
                              punt=st.session_state.df_cabeceras[(st.session_state.df_cabeceras['SECCION'].isin(secciones)) &
                                                                 (~st.session_state.df_cabeceras['PUNTERA'].str.contains('EXH'))])
-    st.dataframe(df_final)
+    csv = df_final.to_csv(index=False)
+
+    #Mostramos las primeras filas del dataframe y botón de descarga
+    st.dataframe(df_final.head(10))
+    st.download_button(label='Descargar tabla', data=csv, file_name='Participación.csv',
+                       mime='text/csv')

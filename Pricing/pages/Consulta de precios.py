@@ -69,9 +69,12 @@ if prog == 'ACTIVOS':
         price['LOCAL'] = price['LOCAL'].apply(str)
 
         df_final = price[['ORIN', 'LOCAL']].merge(df, how='left')
+        csv = df_final.to_csv(index=False)
 
-        #Mostramos el dataframe final
-        st.dataframe(df_final)
+        #Mostramos las primeras filas del dataframe final y botón de descarga
+        st.dataframe(df_final.head(10))
+        st.download_button(label='Descargar tabla', data=csv,
+                           file_name='Precios.csv', mime='text/csv')
     except:
         st.write('Se cargó un archivo con un formato erróneo')
 

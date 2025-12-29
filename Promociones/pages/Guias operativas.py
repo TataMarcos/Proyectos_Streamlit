@@ -382,6 +382,10 @@ if 'go_mails' not in st.session_state:
     else:
         st.stop()
 
+firmas = {'valentina.sienra@tata.com.uy': 'Valentina Sienra',
+          'marcos.larran@tata.com.uy': 'Marcos Larran',
+          'matias.lacava@tata.com.uy': 'Matias La Cava'}
+
 #Definimos datos para enviar mail
 try:
     if 'go_mail' not in st.session_state:
@@ -389,7 +393,11 @@ try:
         if go_mail == '':
             st.stop()
         else:
-            st.session_state.go_mail = go_mail
+            if go_mail in firmas.keys():
+                st.session_state.go_mail = go_mail
+            else:
+                st.write('El mail ingresado no es correcto')
+                st.stop()
     else:
         go_mail = st.session_state.go_mail
 
@@ -428,7 +436,7 @@ if mail:
     enviar_email(sender=go_mail, receiver=st.session_state.go_mails,
                  subject='Guias Operativas ' + nombre_evento, files=[],
                  body=mails['body'].format(evento=nombre_evento, dia=go_day,
-                                           fecha=go_date, hora=go_time))
+                                           fecha=go_date, hora=go_time, firma=firmas[go_mail]))
     st.write('')
     st.write('Mail enviado')
     st.write('')

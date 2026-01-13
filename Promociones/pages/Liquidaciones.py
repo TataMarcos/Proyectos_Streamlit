@@ -95,9 +95,7 @@ else:
 worksheetL = gs.worksheet(sheet)        #Leemos la sheet
 #Tomamos los datos  los mostramos
 data = worksheetL.get_all_values()
-df = pd.DataFrame(data[1:], columns=['Local', 'Nombre Local', 'Dept', 'Group', 'CLASS_NAME', 'SUB_NAME', 'ORIN',
-                                     'Descripción', 'PVP REGULAR', 'PVP LIQUIDACION', 'DESCUENTO', 'MONEDA',
-                                     'FORMA DE LIQUIDAR', 'STOCK 30/06'])
+df = pd.DataFrame(data[1:], columns=data[0])
 st.write('Tabla seleccionada (se muestran las primeras 10 filas):')
 st.dataframe(df.head(10))
 

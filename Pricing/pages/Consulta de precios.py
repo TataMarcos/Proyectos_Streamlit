@@ -43,6 +43,9 @@ if prog == 'ACTIVOS':
     if uploaded_file is not None:
         price = pd.read_excel(uploaded_file)
         price.columns = price.columns.str.upper()
+        price.dropna(subset=['ITEM', 'LOCAL'], inplace=True)
+        price['ITEM'] = price['ITEM'].astype('int64')
+        price['LOCAL'] = price['LOCAL'].astype('int64')
 
     #Hacemos listado de locales y orines
     try:
@@ -89,17 +92,20 @@ if prog == 'I+D':
     if uploaded_file is not None:
         price = pd.read_excel(uploaded_file)
         price.columns = price.columns.str.upper()
+        price.dropna(subset='ITEM', inplace=True)
+        price['ITEM'] = price['ITEM'].astype('int64')
 
     #Hacemos listado de locales y orines
     try:
         items = "('"
         for i in price['ITEM'].unique():
-            items += str(i) + "','"
+            items += str(i).strip() + "','"
         items = items.strip(",'")
         items += "')"
 
         #Descargamos de snow
         c = "WHERE LAA.ORIN IN " + items
+        st.write(c)
         conds = []
         conds.append(c)
         conds.append(fecha)

@@ -1,13 +1,20 @@
 import pandas as pd
-from utils import snowflake_login, descargar_segmento
+from utils import descargar_segmento, get_credentials, snowflake_login
 import streamlit as st
 from datetime import datetime, timedelta
 
 st.title('Consulta de precios')
 
+#Conectamos a snowflake
+credentials_snowflake = get_credentials("snow")
+
 try:
     if 'snow' not in st.session_state:
-        user, cursor, snow = snowflake_login()
+        user, cursor, snow = snowflake_login(
+                                    user = credentials_snowflake['USER'],
+                                    password = credentials_snowflake['PASS'],
+                                    account = credentials_snowflake['ACCOUNT']
+                                    )
         st.session_state.user = user
         st.session_state.cursor = cursor
         st.session_state.snow = snow

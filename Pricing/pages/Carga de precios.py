@@ -2,14 +2,20 @@ import pandas as pd
 import time
 from datetime import datetime
 import streamlit as st
-from utils import snowflake_login, descargar_segmento
-from snowflake.connector.pandas_tools import write_pandas
+from utils import descargar_segmento, snowflake_login, get_credentials, carga_snow_generic
 
 st.title('Carga de precios')
 
+#Conectamos a snowflake
+credentials_snowflake = get_credentials("snow")
+
 try:
     if 'snow' not in st.session_state:
-        user, cursor, snow = snowflake_login()
+        user, cursor, snow = snowflake_login(
+                                    user = credentials_snowflake['USER'],
+                                    password = credentials_snowflake['PASS'],
+                                    account = credentials_snowflake['ACCOUNT']
+                                    )
         st.session_state.user = user
         st.session_state.cursor = cursor
         st.session_state.snow = snow
@@ -20,7 +26,7 @@ try:
 except:
     st.write('Aún no se ingresaron las credenciales')
     st.stop()
-    
+
 if 'tabla' not in st.session_state:
     #Cargamos el archivo
     st.write('Arrastrá el archivo excel con las siguientes columnas [CODIGO_TIENDA,ORIN,PVP_NUEVO,EFFECTIVE_DATE]')
@@ -79,8 +85,8 @@ if 'tabla' not in st.session_state:
         st.write('')
         st.write('Cargando tabla auxiliar')
         time.sleep(3)
-        success, nchunks, nrows, _ = write_pandas(snow, df, table_name='INPUT_PRICING_ACUMULADO',
-                                                    database='SANDBOX_PLUS', schema='DWH')
+        success, nchunks, nrows, _ = carga_snow_generic(df=df, ctx=snow, database='SANDBOX_PLUS',
+                                                        schema='DWH', table_name='INPUT_PRICING_ACUMULADO')
         st.write('')
         st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
         st.session_state.tabla = f
@@ -288,10 +294,30 @@ FROM
 
     time.sleep(3)
 
-    st.write('')
     st.session_state.final_carga_precios = datos
 
 if 'final_carga_precios' in st.session_state:
+    datos = st.session_state.final_carga_precios
+    f = st.session_state.tabla
+    st.write('')
+    filas_por_archivo=2999
+    num_archivos = len(datos) // filas_por_archivo + (1 if len(datos) % filas_por_archivo else 0)
+    st.write('Filas por archivo: ' + str(filas_por_archivo))
+    st.write('Cantidad de archivos: ' + str(num_archivos))
+    for i in range(num_archivos):
+        inicio = i * filas_por_archivo
+        fin = inicio + filas_por_archivo
+        segmento = datos.iloc[inicio:fin]
+        nombre_archivo = f"Pricing_WEB_{f}_file_{i+1}.csv"
+        st.write('Nombre de archivo: ' + nombre_archivo)
+        csv = segmento.to_csv(index=False)
+        st.download_button(label='Descargar ' + nombre_archivo, data=csv,
+                           file_name=nombre_archivo, mime='text/csv', key=i+1)
+    desc = st.button('Terminó descarga')
+    if desc:
+        st.session_state.final_descarga_precios = True
+
+if 'final_descarga_precios' in st.session_state:
     st.write('Archivo a cargar:')
     st.dataframe(st.session_state.final_carga_precios)
     st.write('')

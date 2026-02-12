@@ -2,14 +2,20 @@ import pandas as pd
 import time
 from datetime import datetime
 import streamlit as st
-from utils import snowflake_login, descargar_segmento
-from snowflake.connector.pandas_tools import write_pandas
+from utils import descargar_segmento, snowflake_login, get_credentials, carga_snow_generic
 
 st.title('Carga de familias')
 
+#Conectamos a snowflake
+credentials_snowflake = get_credentials("snow")
+
 try:
     if 'snow' not in st.session_state:
-        user, cursor, snow = snowflake_login()
+        user, cursor, snow = snowflake_login(
+                                    user = credentials_snowflake['USER'],
+                                    password = credentials_snowflake['PASS'],
+                                    account = credentials_snowflake['ACCOUNT']
+                                    )
         st.session_state.user = user
         st.session_state.cursor = cursor
         st.session_state.snow = snow
@@ -86,8 +92,8 @@ st.dataframe(df)
 
 if 'familias_carga' not in st.session_state:
     try:
-        success, nchunks, nrows, _ = write_pandas(snow, df, database='SANDBOX_PLUS', schema='DWH',
-                                                table_name='INPUT_RELACIONES_ITEM_PARENT_ACTUALIZADOS')
+        success, nchunks, nrows, _ = carga_snow_generic( df=df, ctx=snow, database='SANDBOX_PLUS', schema='DWH',
+                                                        table='INPUT_RELACIONES_ITEM_PARENT_ACTUALIZADOS')
         st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
         st.session_state.familias_carga = True
     except Exception as e:

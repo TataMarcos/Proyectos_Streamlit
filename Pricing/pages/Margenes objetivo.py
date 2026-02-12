@@ -1,13 +1,20 @@
 import pandas as pd
-from utils import snowflake_login, carga_snow_generic, descargar_segmento, clean_table
+from utils import carga_snow_generic, descargar_segmento, clean_table, get_credentials, snowflake_login
 import streamlit as st
 from datetime import date
 
 st.title('Actualización de márgenes objetivo')
 
+#Conectamos a snowflake
+credentials_snowflake = get_credentials("snow")
+
 try:
     if 'snow' not in st.session_state:
-        user, cursor, snow = snowflake_login()
+        user, cursor, snow = snowflake_login(
+                                    user = credentials_snowflake['USER'],
+                                    password = credentials_snowflake['PASS'],
+                                    account = credentials_snowflake['ACCOUNT']
+                                    )
         st.session_state.user = user
         st.session_state.cursor = cursor
         st.session_state.snow = snow

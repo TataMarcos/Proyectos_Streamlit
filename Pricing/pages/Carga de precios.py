@@ -52,7 +52,7 @@ if 'tabla' not in st.session_state:
         df['CODIGO_TIENDA'] = df['CODIGO_TIENDA'].astype('int64')
         df['ORIN'] = df['ORIN'].astype('int64').astype('str')
         df['PVP_NUEVO'] = df['PVP_NUEVO'].astype('int64')
-        df['EFFECTIVE_DATE'] = df['EFFECTIVE_DATE'].dt.strftime('%Y-%m-%d')
+        df['EFFECTIVE_DATE'] = pd.to_datetime(df['EFFECTIVE_DATE']).dt.strftime('%Y-%m-%d')
     except KeyError:
         st.write('')
         st.write("❌ Hay un error con las columnas. Verificar las columnas numéricas.")

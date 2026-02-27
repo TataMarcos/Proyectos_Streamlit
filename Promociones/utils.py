@@ -10,29 +10,31 @@ from email.mime.base import MIMEBase
 from email import encoders
 import smtplib
 from config import *
+import sys
+
+repositorio = 'Proyectos_Streamlit\\Promociones'                 #Definimos repositorio para obtener path base
+path_base = os.getcwd()[:os.getcwd().find(repositorio)]
 
 def get_credentials(type: str) -> dict:
-
-    if type == 'credentials_mail_servicio':
-        with open(jsons['credentials_mail_servicio']) as f:
-            credentials = json.load(f)#[type]
-
-    else:
-        with open(jsons['credentials']) as f:
-            credentials = json.load(f)[type]
-
+    try:
+        if type == 'credentials_mail_servicio':
+            with open(path_base + 'leo_usuario_servicio_credenciales.json') as f:
+                credentials = json.load(f)#[type]
+        else:
+            with open(path_base + 'credentials.json') as f:
+                credentials = json.load(f)[type]
+    except:
+        print('Falló lectura de credenciales. Chequear nombre de repositorio.')
+        sys.exit()
     return credentials
 
-#Función para loguearse
-def snowflake_login():
-    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\PROYECTOS_STREAMLIT\\PROMOCIONES':
+def snowflake_login(user: str, password: str, account: str):
 
-        user = "PLUS_VM1_NEW"
-
+    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\' + repositorio.upper():
         snowflake_connection = snowflake.connector.connect(
             user=user,
-            password="aK09fWyh4i5oVcI9A31Ea4vXMcquhMMlIE9sXRoil3oSw9faD9",
-            account="XZ23267-dp32414",
+            password=password,
+            account=account,
             database="SANDBOX_PLUS",
             schema="DWH"
         )
@@ -42,28 +44,20 @@ def snowflake_login():
         while True:
             if counter + 1 < 4:
                 print(f"Intento {counter + 1}")
-
                 try:
-                    user = st.text_input("INGRESAR USUARIO: ")
-                    psw = st.text_input("INGRESAR CONTRASEÑA: ")
                     pass_ = st.text_input("INGRESAR PASSCODE: ")
-
                     # Establish Snowflake connection
                     snowflake_connection = snowflake.connector.connect(
                         user=user,
-                        password=psw,
-                        account="XZ23267-dp32414",
+                        password=password,
+                        account=account,
                         passcode=pass_,
                         database='SANDBOX_PLUS',
                         schema='DWH'
                     )
-
                     cursor = snowflake_connection.cursor()
-
                     print('Correct Password - connected to SNOWFLAKE')
-
                     break
-
                 except FileNotFoundError:
                     print("Error: 'credentials.json' file not found.")
                     break
@@ -74,7 +68,6 @@ def snowflake_login():
                     counter += 1
                     print(f'Error: {e}')
                     print('Incorrect Password - provide again')
-
             else:
                 print('3 Intentos fallidos')
                 break

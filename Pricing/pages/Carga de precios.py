@@ -86,7 +86,7 @@ if 'tabla' not in st.session_state:
         st.write('Cargando tabla auxiliar')
         time.sleep(3)
         success, nchunks, nrows, _ = carga_snow_generic(df=df, ctx=snow, database='SANDBOX_PLUS',
-                                                        schema='DWH', table_name='INPUT_PRICING_ACUMULADO')
+                                                        schema='DWH', table='INPUT_PRICING_ACUMULADO')
         st.write('')
         st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
         st.session_state.tabla = f
@@ -285,8 +285,8 @@ FROM
     # Cambiar el formato a día/mes/año
     datos['EFFECTIVE_DATE'] = datos['EFFECTIVE_DATE'].dt.strftime('%d/%m/%Y')
     d = datos[['LOCATION', 'EFFECTIVE_DATE',
-                'CHANGE_AMOUNT']].groupby(['LOCATION',
-                                            'EFFECTIVE_DATE']).count().reset_index().sort_values(by='CHANGE_AMOUNT', ascending=False)
+               'CHANGE_AMOUNT']].groupby(['LOCATION',
+                                          'EFFECTIVE_DATE']).count().reset_index().sort_values(by='CHANGE_AMOUNT', ascending=False)
     d.rename(columns={'CHANGE_AMOUNT':'COMBINACIONES'}, inplace=True)
     st.write('')
     st.write('Combinaciones por local:')

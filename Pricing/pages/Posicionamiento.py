@@ -51,7 +51,7 @@ try:
         df_gen = pd.read_excel(uploaded_file, sheet_name='general')
         df_gen = df_gen[df_gen['Canasta']==c]
         df.loc[df[df['price_gap_pond'].isna()].index,
-            'price_gap_pond'] = float(str(df_gen[(df_gen['Canasta']==c)]['Ponderado_canasta'].values[0]))/100
+            'price_gap_pond'] = float(str(df_gen[(df_gen['Canasta']==c)]['Ponderado_canasta'].values[0]).replace(',', '.'))/100
         for f in df_gen.columns[1:-2]:
             if str(df_gen[f].values[0]).find('-') != -1:
                 df.loc[df[(df['GRUPO']==f) & (df['pos_min'].isna())].index,

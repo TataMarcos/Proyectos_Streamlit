@@ -26,10 +26,16 @@ gc = gspread.authorize(credentials)
 gauth = GoogleAuth()
 drive = GoogleDrive(gauth)
 
-# Realizamos conexion
+#Conectamos a snowflake
+credentials_snowflake = get_credentials("snow")
+
 try:
     if 'snow' not in st.session_state:
-        user, cursor, snow = snowflake_login()
+        user, cursor, snow = snowflake_login(
+                                    user = credentials_snowflake['USER'],
+                                    password = credentials_snowflake['PASS'],
+                                    account = credentials_snowflake['ACCOUNT']
+                                    )
         st.session_state.user = user
         st.session_state.cursor = cursor
         st.session_state.snow = snow

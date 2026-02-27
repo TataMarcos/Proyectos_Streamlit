@@ -1,5 +1,5 @@
 import re
-from utils import snowflake_login
+from utils import snowflake_login, get_credentials
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
@@ -49,10 +49,16 @@ def price (s):
             ef = 0
     return ef
 
-# Realizamos conexion
+#Conectamos a snowflake
+credentials_snowflake = get_credentials("snow")
+
 try:
     if 'snow' not in st.session_state:
-        user, cursor, snow = snowflake_login()
+        user, cursor, snow = snowflake_login(
+                                    user = credentials_snowflake['USER'],
+                                    password = credentials_snowflake['PASS'],
+                                    account = credentials_snowflake['ACCOUNT']
+                                    )
         st.session_state.user = user
         st.session_state.cursor = cursor
         st.session_state.snow = snow

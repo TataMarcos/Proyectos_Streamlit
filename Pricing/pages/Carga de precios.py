@@ -3,6 +3,8 @@ import time
 from datetime import datetime
 import streamlit as st
 from utils import descargar_segmento, snowflake_login, get_credentials, carga_snow_generic
+import io
+import zipfile
 
 st.title('Carga de precios')
 
@@ -195,7 +197,7 @@ if 'checks_carga_precios' not in st.session_state:
     precio = checks[checks.precio_diferente == 0]
     st.write('Hay ', len(precio[['orin', 'geog_locl_cod']]),
              ' combinaciones item-local con ese mismo precio')
-    st.session_state.checks_carga_precios = True
+    st.session_state.checks_carga_precios = checks
 
 if 'checks_carga_precios' in st.session_state:
     time.sleep(2)
@@ -298,21 +300,74 @@ FROM
 
 if 'final_carga_precios' in st.session_state:
     datos = st.session_state.final_carga_precios
+    checks = st.session_state.checks_carga_precios
     f = st.session_state.tabla
+
+    if 'final_descarga_precios' in st.session_state:
+        st.write('Hay un total de ', len(checks), ' combinaciones local sin aplicar filtros')
+
+        familia = checks[checks.integrantes_familia > 1]
+        st.write('Hay ', len(familia[['familia', 'geog_locl_cod']].drop_duplicates()),
+                ' combinaciones familia-local')
+        st.write('Generan un total de ', len(familia[['orin', 'geog_locl_cod']]),
+                ' combinaciones item-local')
+
+        ex = checks[checks.excluido_comercial == 1]
+        if len(ex[['orin', 'geog_locl_cod']]) > 0:
+            st.write('Hay ', len(ex[['orin', 'geog_locl_cod']]),
+                    ' combinaciones item-local excluidos por comercial')
+            st.write('Hay ', len(ex[['orin']].drop_duplicates()), 'items unicos excluidos por comercial')
+        else:
+            st.write('No hay items excluidos por comercial para cargar')
+
+        promo = checks[checks.esta_en_promo == 1]
+        if len(promo[['orin', 'geog_locl_cod']]) > 0:
+            st.write('Hay ', len(promo[['orin', 'geog_locl_cod']]), ' combinaciones item-local en promo')
+        else:
+            st.write('No hay items en promo')
+
+        activo = checks[checks.estado != 4]
+        if len(activo[['orin', 'geog_locl_cod']]) > 0:
+            st.write('Hay ', len(activo[['orin', 'geog_locl_cod']]), ' combinaciones item-local no activas')
+        else:
+            st.write('Todas las combinaciones estan activas')
+
+        precio = checks[checks.precio_diferente == 0]
+        st.write('Hay ', len(precio[['orin', 'geog_locl_cod']]),
+                ' combinaciones item-local con ese mismo precio')
+    
     st.write('')
     filas_por_archivo=2999
     num_archivos = len(datos) // filas_por_archivo + (1 if len(datos) % filas_por_archivo else 0)
     st.write('Filas por archivo: ' + str(filas_por_archivo))
     st.write('Cantidad de archivos: ' + str(num_archivos))
-    for i in range(num_archivos):
-        inicio = i * filas_por_archivo
-        fin = inicio + filas_por_archivo
-        segmento = datos.iloc[inicio:fin]
-        nombre_archivo = f"Pricing_WEB_{f}_file_{i+1}.csv"
-        st.write('Nombre de archivo: ' + nombre_archivo)
-        csv = segmento.to_csv(index=False)
-        st.download_button(label='Descargar ' + nombre_archivo, data=csv,
-                           file_name=nombre_archivo, mime='text/csv', key=i+1)
+
+    # Crear ZIP en memoria
+    buffer_zip = io.BytesIO()
+
+    with zipfile.ZipFile(buffer_zip, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for i in range(num_archivos):
+            inicio = i * filas_por_archivo
+            fin = inicio + filas_por_archivo
+            segmento = datos.iloc[inicio:fin]
+            nombre_archivo = f"Pricing_WEB_{f}_file_{i+1}.csv"
+            # st.write('Nombre de archivo: ' + nombre_archivo)
+            csv = segmento.to_csv(index=False, sep=';')
+            # st.download_button(label='Descargar ' + nombre_archivo, data=csv,
+            #                 file_name=nombre_archivo, mime='text/csv', key=i+1)
+            # Agregar archivo al ZIP
+            zip_file.writestr(nombre_archivo, csv)
+
+    buffer_zip.seek(0)
+
+    st.download_button(label="Descargar todos los archivos en ZIP", data=buffer_zip,
+                       file_name="Pricing_WEB_archivos.zip", mime="application/zip")
+    #Armamos consolidado
+    cons = datos[['ITEM', 'LOCATION', 'CHANGE_AMOUNT']]
+    cons.columns = ['ORIN', 'CODIGO_TIENDA', 'PVP_NUEVO']
+    csv = cons.to_csv(index=False, sep=';')
+    st.download_button(label='Descargar consolidado', data=csv, file_name='Consolidado.csv', mime='text/csv')
+
     desc = st.button('Terminó descarga')
     if desc:
         st.session_state.final_descarga_precios = True

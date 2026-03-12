@@ -87,19 +87,19 @@ if prog == 'Referente':
         #Resumimos cambios
         st.write('')
         st.write('Combinaciones y items actuales:')
-        st.write(f'Referentes: {ref['ITEM'].unique().size} articulos con {len(ref)} combinaciones.')
-        st.write(f'Mercado: {merca['ITEM'].unique().size} articulos con {len(merca)} combinaciones.')
-        st.write(f'Surtido: {surti['ITEM'].unique().size} articulos con {len(surti)} combinaciones.')
-        st.write(f'Excluido: {exclu['ITEM'].unique().size} articulos con {len(exclu)} combinaciones.')
-        st.write(f'Marca Propia: {mp['ITEM'].unique().size} articulos con {len(mp)} combinaciones.')
+        st.write(f"Referentes: {ref['ITEM'].unique().size} articulos con {len(ref)} combinaciones.")
+        st.write(f"Mercado: {merca['ITEM'].unique().size} articulos con {len(merca)} combinaciones.")
+        st.write(f"Surtido: {surti['ITEM'].unique().size} articulos con {len(surti)} combinaciones.")
+        st.write(f"Excluido: {exclu['ITEM'].unique().size} articulos con {len(exclu)} combinaciones.")
+        st.write(f"Marca Propia: {mp['ITEM'].unique().size} articulos con {len(mp)} combinaciones.")
 
         st.write('')
         st.write('Combinaciones y items a cargar:')
-        st.write(f'Referentes: {carga['ITEM'].unique().size} articulos con {len(carga)} combinaciones.')
-        st.write(f'Mercado: {carga_mercado['ITEM'].unique().size} articulos con {len(carga_mercado)} combinaciones.')
-        st.write(f'Surtido: {carga_surtido['ITEM'].unique().size} articulos con {len(carga_surtido)} combinaciones.')
-        st.write(f'Excluido: {carga_excluido['ITEM'].unique().size} articulos con {len(carga_excluido)} combinaciones.')
-        st.write(f'Marca Propia: {carga_mp['ITEM'].unique().size} articulos con {len(carga_mp)} combinaciones.')
+        st.write(f"Referentes: {carga['ITEM'].unique().size} articulos con {len(carga)} combinaciones.")
+        st.write(f"Mercado: {carga_mercado['ITEM'].unique().size} articulos con {len(carga_mercado)} combinaciones.")
+        st.write(f"Surtido: {carga_surtido['ITEM'].unique().size} articulos con {len(carga_surtido)} combinaciones.")
+        st.write(f"Excluido: {carga_excluido['ITEM'].unique().size} articulos con {len(carga_excluido)} combinaciones.")
+        st.write(f"Marca Propia: {carga_mp['ITEM'].unique().size} articulos con {len(carga_mp)} combinaciones.")
     
         cont = st.text_input('Está de acuerdo con estos cambios? (si/no)')
         if cont.lower().strip() == 'si':
@@ -211,11 +211,11 @@ elif prog == 'Mercado + Surtido':
 
     borrar = can[can['ITEM'].isin(canastas['ITEM'].unique())]
 
-    st.write(f'Se van a borrar {len(borrar[borrar['CANASTA']=='referente'])} registros de {borrar[borrar['CANASTA']=='referente']['ITEM'].unique().size} artículos referentes')
-    st.write(f'Se van a borrar {len(borrar[borrar['CANASTA']=='mercado'])} registros de {borrar[borrar['CANASTA']=='mercado']['ITEM'].unique().size} artículos mercado')
-    st.write(f'Se van a borrar {len(borrar[borrar['CANASTA']=='surtido'])} registros de {borrar[borrar['CANASTA']=='surtido']['ITEM'].unique().size} artículos surtido')
-    st.write(f'Se van a borrar {len(borrar[borrar['CANASTA']=='excluido'])} registros de {borrar[borrar['CANASTA']=='excluido']['ITEM'].unique().size} artículos excluidos')
-    st.write(f'Se van a borrar {len(borrar[borrar['CANASTA']=='marca propia'])} registros de {borrar[borrar['CANASTA']=='marca propia']['ITEM'].unique().size} artículos marca propia')
+    st.write(f"Se van a borrar {len(borrar[borrar['CANASTA']=='referente'])} registros de {borrar[borrar['CANASTA']=='referente']['ITEM'].unique().size} artículos referentes")
+    st.write(f"Se van a borrar {len(borrar[borrar['CANASTA']=='mercado'])} registros de {borrar[borrar['CANASTA']=='mercado']['ITEM'].unique().size} artículos mercado")
+    st.write(f"Se van a borrar {len(borrar[borrar['CANASTA']=='surtido'])} registros de {borrar[borrar['CANASTA']=='surtido']['ITEM'].unique().size} artículos surtido")
+    st.write(f"Se van a borrar {len(borrar[borrar['CANASTA']=='excluido'])} registros de {borrar[borrar['CANASTA']=='excluido']['ITEM'].unique().size} artículos excluidos")
+    st.write(f"Se van a borrar {len(borrar[borrar['CANASTA']=='marca propia'])} registros de {borrar[borrar['CANASTA']=='marca propia']['ITEM'].unique().size} artículos marca propia")
 
     ac = st.text_input('Estos se reemplazarán por lo que se encuentra en el archivo. Está de acuerdo? (si/no)')
     if ac.lower().strip() == 'si':

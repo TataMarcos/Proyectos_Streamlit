@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import date
 import calendar
-from utils import snowflake_login, carga_snow_generic, descargar_segmento
+from utils import snowflake_login, carga_snow_generic, descargar_segmento, get_credentials
 import gspread
 from gspread_dataframe import get_as_dataframe
 from google.oauth2.service_account import Credentials
@@ -201,10 +201,16 @@ gc = gspread.authorize(credentials)
 gauth = GoogleAuth()
 drive = GoogleDrive(gauth)
 
-#Realizamos conexión a snowflake
+#Conectamos a snowflake
+credentials_snowflake = get_credentials("snow")
+
 try:
     if 'snow' not in st.session_state:
-        user, cursor, snow = snowflake_login()
+        user, cursor, snow = snowflake_login(
+                                    user = credentials_snowflake['USER'],
+                                    password = credentials_snowflake['PASS'],
+                                    account = credentials_snowflake['ACCOUNT']
+                                    )
         st.session_state.user = user
         st.session_state.cursor = cursor
         st.session_state.snow = snow

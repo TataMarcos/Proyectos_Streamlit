@@ -104,15 +104,15 @@ if prog == 'Referente':
         cont = st.text_input('Está de acuerdo con estos cambios? (si/no)')
         if cont.lower().strip() == 'si':
             #Borramos los articulos que actualmente están como referentes y como mercado
-            cursor.execute("DELETE FROM SANDBOX_PLUS.DWH.CANASTAS WHERE CANASTA = 'referente';")
+            cursor.execute("DELETE FROM SPIKE.SPIKE.CANASTAS WHERE CANASTA = 'referente';")
             st.write('Combinaciones con canasta "referente" borradas')
-            cursor.execute("DELETE FROM SANDBOX_PLUS.DWH.CANASTAS WHERE CANASTA = 'mercado';")
+            cursor.execute("DELETE FROM SPIKE.SPIKE.CANASTAS WHERE CANASTA = 'mercado';")
             st.write('Combinaciones con canasta "mercado" borradas')
-            cursor.execute("DELETE FROM SANDBOX_PLUS.DWH.CANASTAS WHERE CANASTA = 'surtido';")
+            cursor.execute("DELETE FROM SPIKE.SPIKE.CANASTAS WHERE CANASTA = 'surtido';")
             st.write('Combinaciones con canasta "surtido" borradas')
-            cursor.execute("DELETE FROM SANDBOX_PLUS.DWH.CANASTAS WHERE CANASTA = 'excluido';")
+            cursor.execute("DELETE FROM SPIKE.SPIKE.CANASTAS WHERE CANASTA = 'excluido';")
             st.write('Combinaciones con canasta "excluido" borradas')
-            cursor.execute("DELETE FROM SANDBOX_PLUS.DWH.CANASTAS WHERE CANASTA = 'marca propia';")
+            cursor.execute("DELETE FROM SPIKE.SPIKE.CANASTAS WHERE CANASTA = 'marca propia';")
             st.write('Combinaciones con canasta "marca propia" borradas')
             st.write('')
 
@@ -222,7 +222,7 @@ elif prog == 'Mercado + Surtido':
         try:
             st.write('')
             st.write('Borrando')
-            query = 'DELETE FROM SANDBOX_PLUS.DWH.CANASTAS WHERE ITEM IN {items}'
+            query = 'DELETE FROM SPIKE.SPIKE.CANASTAS WHERE ITEM IN {items}'
             cursor.execute(query.format(items=tuple(borrar['ITEM'].unique())))
             st.write('Registros borrados correctamente.')
         except:

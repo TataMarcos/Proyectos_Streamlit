@@ -4,7 +4,7 @@ from datetime import datetime
 import streamlit as st
 from utils import descargar_segmento, carga_snow_generic, get_credentials, snowflake_login
 
-st.title('Carga de familias')
+st.title('Actualización de canastas')
 
 #Conectamos a snowflake
 credentials_snowflake = get_credentials("snow")
@@ -27,9 +27,26 @@ except:
     st.write('Aún no se ingresaron las credenciales')
     st.stop()
 
-prog = st.selectbox('Seleccione el programa: ', ['Referente', 'Mercado + Surtido'])
+prog = st.selectbox('Seleccione el programa: ', ['Referente', 'Mercado + Surtido', 'Descarga de canastas'])
 
-if prog == 'Referente':
+if prog == 'Descarga de canastas':
+    c = st.selectbox('Seleccione la canasta: ', ['referente', 'mercado', 'surtido', 'excluido', 'marca propia'])
+    cursor.execute(f'''
+                    SELECT
+                        LGL.GEOG_LOCL_COD, C.ITEM, LAA.ARTC_ARTC_DESC, C.CANASTA FROM SPIKE.SPIKE.CANASTAS C
+                    JOIN
+                        MSTRDB.DWH.LU_ARTC_ARTICULO LAA
+                    ON C.ITEM::TEXT = LAA.ORIN
+                    JOIN
+                        MSTRDB.DWH.LU_GEOG_LOCAL LGL
+                    ON C.GEOG_LOCL_ID = LGL.GEOG_LOCL_ID
+                    WHERE
+                        C.CANASTA = '{c}';''')
+    desc = cursor.fetch_pandas_all().astype({'ITEM':'str'})
+    st.dataframe(desc.head())
+    csv = desc.to_csv(index=False)
+    st.download_button(label='Descargar tabla', data=csv, file_name='Canastas.csv', mime='text/csv')
+elif prog == 'Referente':
     #Cargamos el archivo 
     st.write('')
     st.write('Arrastrá el archivo excel con el formato establecido')
@@ -38,10 +55,14 @@ if prog == 'Referente':
     if uploaded_file is None:
         st.stop()
     else:
-        #Armamos archivos con referentes
-        referentes = pd.read_excel(uploaded_file).melt(id_vars='ORIN', value_vars=pd.read_excel(uploaded_file).columns[1:],
-                                                       var_name='GEOG_DPTO_DESC', value_name='REFERENTE').rename(columns={'ORIN':'ITEM'})
-        referentes = referentes[referentes['REFERENTE']==1].drop(columns='REFERENTE')
+        try:
+            #Armamos archivos con referentes
+            referentes = pd.read_excel(uploaded_file).melt(id_vars='ORIN', value_vars=pd.read_excel(uploaded_file).columns[1:],
+                                                           var_name='GEOG_DPTO_DESC', value_name='REFERENTE').rename(columns={'ORIN':'ITEM'})
+            referentes = referentes[referentes['REFERENTE']==1].drop(columns='REFERENTE')
+        except:
+            st.write('El archivo no tiene el formato correcto')
+            st.stop()
     
     if 'ref' not in st.session_state:
         #Descargamos los locales, los referentes actuales y los de mercado actuales
@@ -117,15 +138,15 @@ if prog == 'Referente':
             st.write('')
 
             #Cargamos productos nuevos
-            carga_snow_generic(df=carga, ctx=snow, table='CANASTAS', database='SANDBOX_PLUS', schema='DWH')
+            carga_snow_generic(df=carga, ctx=snow, table='CANASTAS', database='SPIKE', schema='SPIKE')
             st.write(f'Se cargaron {len(carga)} combinaciones con canasta "referente"')
-            carga_snow_generic(df=carga_mercado, ctx=snow, table='CANASTAS', database='SANDBOX_PLUS', schema='DWH')
+            carga_snow_generic(df=carga_mercado, ctx=snow, table='CANASTAS', database='SPIKE', schema='SPIKE')
             st.write(f'Se cargaron {len(carga_mercado)} combinaciones con canasta "mercado"')
-            carga_snow_generic(df=carga_surtido, ctx=snow, table='CANASTAS', database='SANDBOX_PLUS', schema='DWH')
+            carga_snow_generic(df=carga_surtido, ctx=snow, table='CANASTAS', database='SPIKE', schema='SPIKE')
             st.write(f'Se cargaron {len(carga_surtido)} combinaciones con canasta "surtido"')
-            carga_snow_generic(df=carga_excluido, ctx=snow, table='CANASTAS', database='SANDBOX_PLUS', schema='DWH')
+            carga_snow_generic(df=carga_excluido, ctx=snow, table='CANASTAS', database='SPIKE', schema='SPIKE')
             st.write(f'Se cargaron {len(carga_excluido)} combinaciones con canasta "excluido"')
-            carga_snow_generic(df=carga_mp, ctx=snow, table='CANASTAS', database='SANDBOX_PLUS', schema='DWH')
+            carga_snow_generic(df=carga_mp, ctx=snow, table='CANASTAS', database='SPIKE', schema='SPIKE')
             st.write(f'Se cargaron {len(carga_mp)} combinaciones con canasta "marca propia"')
 
             st.session_state.ref = carga
@@ -232,8 +253,7 @@ elif prog == 'Mercado + Surtido':
         try:
             st.write('')
             st.write('Subiendo nuevos datos')
-            carga_snow_generic(df=carga, ctx=snow, database='SANDBOX_PLUS',
-                               schema='DWH', table='CANASTAS')
+            carga_snow_generic(df=carga, ctx=snow, database='SPIKE', schema='SPIKE', table='CANASTAS')
             st.write('Registros subidos correctamente.')
         except:
             st.write('Hubo problemas para subir los registros. Contactar con area de Data.')

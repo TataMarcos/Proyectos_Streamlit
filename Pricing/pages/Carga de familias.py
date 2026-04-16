@@ -50,8 +50,8 @@ if continuar:
 
 if 'actualizar_familias' not in st.session_state:
     st.stop()
-else:
-    st.write(st.session_state.actualizar_familias)
+# else:
+#     st.write(st.session_state.actualizar_familias)
 
 #Cargamos el archivo
 st.write('')

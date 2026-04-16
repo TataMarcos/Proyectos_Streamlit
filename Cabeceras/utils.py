@@ -1,40 +1,38 @@
-import json
-import snowflake.connector
-import pandas as pd
-import numpy as np
-import os
 from snowflake.connector.pandas_tools import write_pandas
-import streamlit as st
+import os
+import snowflake.connector
+import json
+import pandas as pd
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import smtplib
+import sys
 
-###########################################################################################################
-########################################### AUXILIARY FUNCTIONS ###########################################
-###########################################################################################################
+repositorio = 'Proyectos_Streamlit\\Cabeceras'                 #Definimos repositorio para obtener path base
+path_base = os.getcwd()[:os.getcwd().find(repositorio)]
 
 def get_credentials(type: str) -> dict:
-    print(os.getcwd())
-    f = open('credentials.json',)
-    credentials = json.load(f)[type]
-
+    try:
+        if type == 'credentials_mail_servicio':
+            with open(path_base + 'leo_usuario_servicio_credenciales.json') as f:
+                credentials = json.load(f)#[type]
+        else:
+            with open(path_base + 'credentials.json') as f:
+                credentials = json.load(f)[type]
+    except:
+        print('Falló lectura de credenciales. Chequear nombre de repositorio.')
+        sys.exit()
     return credentials
 
-def get_credentials_correo(type: str) -> dict:
-    print(os.getcwd())
-    f = open("C:\\Users\\arturo.botata12\\Documents\GitHub\\credentials_correo.json",)
-    credentials = json.load(f)[type]
+def snowflake_login(user: str, password: str, account: str):
 
-    return credentials
-
-
-def snowflake_login():
-
-    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\PROYECTOS_STREAMLIT\\CABECERAS':
-
-        user = "PLUS_VM1_NEW"
-
+    if os.getcwd().upper() == 'C:\\USERS\\ARTURO.BOTATA12\\DOCUMENTS\\GITHUB\\' + repositorio.upper():
         snowflake_connection = snowflake.connector.connect(
             user=user,
-            password="aK09fWyh4i5oVcI9A31Ea4vXMcquhMMlIE9sXRoil3oSw9faD9",
-            account="XZ23267-dp32414",
+            password=password,
+            account=account,
             database="SANDBOX_PLUS",
             schema="DWH"
         )
@@ -44,28 +42,20 @@ def snowflake_login():
         while True:
             if counter + 1 < 4:
                 print(f"Intento {counter + 1}")
-
                 try:
-                    user = st.text_input("INGRESAR USUARIO: ")
-                    psw = st.text_input("INGRESAR CONTRASEÑA: ")
-                    pass_ = st.text_input("INGRESAR PASSCODE: ")
-
+                    pass_ = input("INGRESAR PASSCODE: ")
                     # Establish Snowflake connection
                     snowflake_connection = snowflake.connector.connect(
                         user=user,
-                        password=psw,
-                        account="XZ23267-dp32414",
+                        password=password,
+                        account=account,
                         passcode=pass_,
                         database='SANDBOX_PLUS',
                         schema='DWH'
                     )
-
                     cursor = snowflake_connection.cursor()
-
                     print('Correct Password - connected to SNOWFLAKE')
-
                     break
-
                 except FileNotFoundError:
                     print("Error: 'credentials.json' file not found.")
                     break
@@ -76,33 +66,39 @@ def snowflake_login():
                     counter += 1
                     print(f'Error: {e}')
                     print('Incorrect Password - provide again')
-
             else:
                 print('3 Intentos fallidos')
                 break
 
     return user, cursor, snowflake_connection
 
+def descargar_segmento(cursor: snowflake.connector.cursor.SnowflakeCursor,
+                       query: str, cond = None) -> pd.DataFrame:
 
-def registrar_log(status_code: int, mensaje: str, archivo: str):
-    """
-        Esta funcion auxiliar que creamos, es a modo de tener un log ante posibles errores
-        del código de envio, vamos a recibir como parametros un codigo y un mensaje para guardar
-        en un diccionario y devolverlo para ir grabando una lista.
-    """
-    with open(archivo, 'a') as file:
-        error = f'{status_code} - {mensaje}\n'
-        file.write(error)
+    # Obtengo json con directorio de queries y su orden
+    query_path = 'Queries/' + query + '.sql'
 
+    # Obtengo el texto de mi query
+    with open(query_path, 'r', encoding="utf8") as file: command = file.read()
+
+    # Ejecuto query para obtener clientes que superaron la promo
+    if not(cond):
+        cursor.execute(command)
+        #command = command
+    else:
+        cursor.execute(command.format(cond=cond))
+        #command = command.replace(';', cond)
+
+    # Obtenemos el resultado de la consulta del cursor en una dataframe de pandas
+    df = cursor.fetch_pandas_all()
+
+    return df
 
 def carga_snow_generic(df, ctx, table, database, schema):
 
     # Ingresamos la base de datos en Snow
-    success = write_pandas(df = df,
-                            conn = ctx,
-                            table_name= table,
-                            database= database,
-                            schema = schema)
+    success = write_pandas(df = df, conn = ctx, table_name= table,
+                           database= database, schema = schema)
 
     if success:
         print('SUCCESS')
@@ -121,24 +117,47 @@ def clean_table(cursor, table, cond=None):
 
     return True
 
+def enviar_email(sender, receiver, subject, body, files:list):
+    smtp_server = "fast.smtpok.com"  # Reemplaza con el servidor SMTP que uses
+    smtp_port = 587  # Usualmente 587 para TLS o 465 para SSL
+    sender_email = sender                       #Reemplaza con tu email
+    credentials = get_credentials('correo_autom')
+    sender_user = credentials['USER']
+    sender_password = credentials['PASS']       #Reemplaza con tu contraseña
+    recipient_email = receiver                  #Email del destinatario
+ 
 
-def descargar_segmento(cursor: snowflake.connector.cursor.SnowflakeCursor,                       query: str, cond = None) -> pd.DataFrame:
+    # Crear el mensaje
+    mensaje = MIMEMultipart()
+    mensaje["From"] = sender_email
+    mensaje["To"] = ", ".join(recipient_email)
+    mensaje["Subject"] = subject #"Error Maestro productos Hist"
+      
+    mensaje.attach(MIMEText(body, "plain"))
 
-    # Obtengo json con directorio de queries y su orden
-    query_path = query + '.sql'
-
-    # Obtengo el texto de mi query
-    with open(query_path, 'r', encoding="utf8") as file: command = file.read()
-
-    # Ejecuto query para obtener clientes que superaron la promo
-    if not(cond):
-        cursor.execute(command)
-        #command = command
-    else:
-        cursor.execute(command.replace(';', cond))
-        #command = command.replace(';', cond)
-
-    # Obtenemos el resultado de la consulta del cursor en una dataframe de pandas
-    df = cursor.fetch_pandas_all()
-
-    return df
+    # Attach the Excel file
+    if len(files) > 0:
+        for file_path in files:
+            attachment_name = os.path.basename(file_path)
+            with open(file_path, "rb") as attachment:
+                part = MIMEBase('application', 'octet-stream')
+                part.set_payload(attachment.read())
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition', f'attachment; filename={attachment_name}')
+                mensaje.attach(part)
+    try:
+        # Conectar al servidor SMTP
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()  # Iniciar cifrado TLS
+        server.login(sender_user, sender_password)  # Autenticación
+        
+        # Enviar el correo
+        server.sendmail(sender_email, recipient_email, mensaje.as_string())
+        print("Correo enviado exitosamente.")
+        
+        # Cerrar la conexión
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Error al enviar el correo: {e}")
+        return False

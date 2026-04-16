@@ -112,13 +112,15 @@ if prog == 'I+D':
 
         #Descargamos de snow
         c = "WHERE LAA.ORIN IN " + items
-        st.write(c)
+        # st.write(c)
         conds = []
         conds.append(c)
         conds.append(fecha)
         df = descargar_segmento(cursor=cursor, query='PRECIOS - I+D', conds=conds).astype({'ORIN':str})
+        csv = df.to_csv(index=False)
 
         #Mostramos el dataframe final
-        st.dataframe(df)
+        st.dataframe(df.head(10))
+        st.download_button(label='Descargar tabla', data=csv, file_name='Precios.csv', mime='text/csv')
     except:
         st.write('Se cargó un archivo con un formato erróneo')

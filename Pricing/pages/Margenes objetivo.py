@@ -45,20 +45,21 @@ mg_actual = descargar_segmento(cursor=cursor, query='MARGENES').astype({'ORIN':'
 p = st.button('Obtener nuevos márgenes')
 if p:
     df_final = mg_actual.merge(mg_update, how='outer')
+    st.write('Margenes ingresados')
+    st.dataframe(df_final.dropna())
     df_final.loc[df_final[~df_final['MARGEN OBJETIVO'].isna()].index,
                 'MG'] = df_final.loc[df_final[~df_final['MARGEN OBJETIVO'].isna()].index,
                                     'MARGEN OBJETIVO']
-    st.write('Margenes ingresados')
-    st.dataframe(df_final.dropna())
     st.write('Margenes actualizados')
     st.dataframe(df_final[['ORIN', 'MG']])
-    st.session_state.df_final = df_final[['ORIN', 'MG']]
+    st.session_state.margenes = df_final[['ORIN', 'MG']]
 else:
-    st.stop()
+    if 'margenes' not in st.session_state:
+        st.stop()
 
 sub = st.button('Subir márgenes actualizados')
 if sub:
-    df_final = st.session_state.df_final
+    df_final = st.session_state.margenes
     df_hist = df_final.copy()
     df_hist['ULTIMA_ACTUALIZACION'] = date.today().strftime('%Y-%m-%d')
     df_hist['REALIZADA_POR'] = user

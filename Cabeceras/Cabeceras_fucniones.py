@@ -1,8 +1,4 @@
 import pandas as pd
-# from datetime import date, datetime
-from utils import snowflake_login, get_credentials
-import numpy as np
-
 #Funciones de redondeo
 def red (r:float):
     allowed_numbers = [0.2, 0.25, 0.4, 0.5, 0.6, 0.75, 0.8, 1.0, 1.2, 1.25, 1.4, 1.5, 1.6, 1.75, 1.8, 2.0,
@@ -120,36 +116,3 @@ def participacion (cab:pd.DataFrame):
                          'VENTA_ACELERADA_DIARIA', 'CARGA_SUGERIDA_X_VENTA', 'DOH_CARGA_MAX', 'DOH_CARGA_MIN',
                          'PARTICIPACION', 'CARGA_MAX_POR_PARTICIPACION', 'CARGA_MIN_POR_PARTICIPACION']]
     return df_final
-
-def tablaJson (df:pd.DataFrame):
-    reg = []
-    for i in df.index:
-        aux = {}
-        for c in df.columns:
-            aux[c] = df.loc[i, c]
-        reg.append(aux)
-    estructura = {}
-    estructura['registros'] = reg
-    return estructura
-
-#Conectamos a snowflake
-credentials_snowflake = get_credentials("snow")
-
-user, cursor, snow = snowflake_login(
-                                    user = credentials_snowflake['USER'],
-                                    password = credentials_snowflake['PASS'],
-                                    account = credentials_snowflake['ACCOUNT']
-                                    )
-# inicio = datetime.now()
-
-#Armammos df de puntera
-cursor.execute('SELECT * FROM SANDBOX_PLUS.DWH.CABECERAS_VIEW;')
-cab = cursor.fetch_pandas_all()
-# print((datetime.now() - inicio).seconds)
-df_final = participacion(cab=cab)
-df_final['CARGA_SUGERIDA'] = df_final['CARGA_SUGERIDA_X_VENTA']
-df_final.loc[df_final[df_final['CARGA_SUGERIDA_X_VENTA']<df_final['CARGA_MIN_POR_PARTICIPACION']].index,
-             'CARGA_SUGERIDA'] = df_final.loc[df_final[df_final['CARGA_SUGERIDA_X_VENTA']<df_final['CARGA_MIN_POR_PARTICIPACION']].index,
-                                              'CARGA_MIN_POR_PARTICIPACION']
-enviar = tablaJson(df_final[['GEOG_LOCL_COD', 'PUNTERA', 'ITEM', 'CARGA_SUGERIDA']])
-# print((datetime.now() - inicio).seconds)

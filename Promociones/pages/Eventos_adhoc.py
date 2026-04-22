@@ -115,7 +115,7 @@ elif prog == 'Eliminar evento Adhoc':
     evento['PROM_ESTIBA'] = 0
     evento_final = evento[['PROM_FECHA_INICIO', 'PROM_FECHA_FIN', 'ARTC_ARTC_COD', 'EVENTO_ID',
                            'PRONOSTICO_VENTA', 'STOCK_INICIAL_PROMO', 'GEOG_LOCL_COD', 'PROM_PVP_OFERTA',
-                           'PROM_LOCAL_ACTIVO', 'PROM_ESTIBA', 'ORIN']].drop_duplicates()
+                           'PROM_LOCAL_ACTIVO', 'PROM_ESTIBA', 'ORIN']].drop_duplicates(subset='ORIN')
     st.write('')
     st.write('Evento a cargar:')
     st.dataframe(evento_final)

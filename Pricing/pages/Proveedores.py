@@ -44,7 +44,8 @@ except:
 
 # Si no hay datos cargados en sesión, se descargan desde Snowflake
 if 'prov' not in st.session_state:
-    prov = descargar_segmento(cursor=cursor, query='PROVEEDORES').sort_values('LISTA').reset_index(drop=True)
+    cursor.execute('SELECT * FROM SANDBOX_PLUS.DWH.COSTO_PROVEEDORES WHERE ESTADO IS NULL;')
+    prov = cursor.fetch_pandas_all().drop(columns='FECHA_ANALISIS').sort_values('LISTA').reset_index(drop=True)
 else:
     # Si ya existen, se reutilizan
     prov = st.session_state.prov
@@ -54,11 +55,14 @@ else:
 # ================================
 
 # Opciones permitidas en la columna ESTADO
-opc = ["Aprobada", "Rechazada"]
+opc = ["APROBADA", "RECHAZADA"]
 
 # Columnas que NO se pueden editar
 dis = list(prov.columns)
 dis.remove('ESTADO')
+
+# Fecha actual
+dt = date.today().strftime('20%y-%m-%d')
 
 # Diccionario para formatear meses
 meses = {1: "ene", 2: "feb", 3: "mar", 4: "abr", 5: "may", 6: "jun",
@@ -100,14 +104,36 @@ if 'proveedores' not in st.session_state:
     if cont:
         st.session_state.proveedores = proveedores
 
-# ================================
-# 📄 GENERACIÓN DE ARCHIVOS
-# ================================
+# ===============================================
+# 📄 GENERACIÓN DE ARCHIVOS Y CARGADO DE TABLAS
+# ===============================================
 
 if 'proveedores' in st.session_state:
     proveedores = st.session_state.proveedores
-    it = proveedores[(proveedores['GEOG_LOCL_COD'].isna()) & (proveedores['ESTADO'] == 'Aprobada')]
-    loc = proveedores[(~proveedores['GEOG_LOCL_COD'].isna()) & (proveedores['ESTADO'] == 'Aprobada')]
+    carga = proveedores[proveedores['ESTADO'].isin(['APROBADA', 'RECHAZADA'])]
+    carga['FECHA_ANALISIS'] = dt
+    success = carga_snow_generic(df=carga[carga['GEOG_LOCL_COD'].isna()], ctx=snow,
+                                 database='SANDBOX_PLUS', schema='DWH', table='INPUT_PROVEEDORES_ITEM')
+    cursor.execute('''
+MERGE INTO SANDBOX_PLUS.DWH.COSTO_PROVEEDORES AS TARGET
+USING SANDBOX_PLUS.DWH.INPUT_PROVEEDORES_ITEM AS SOURCE
+ON
+    TARGET.SUPPLIER = SOURCE.SUPPLIER AND TARGET.LISTA = SOURCE.LISTA AND TARGET.ORIN = SOURCE.ORIN
+WHEN MATCHED THEN
+    UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_ANALISIS = SOURCE.FECHA_ANALISIS;
+''')
+    success = carga_snow_generic(df=carga[~carga['GEOG_LOCL_COD'].isna()], ctx=snow,
+                                 database='SANDBOX_PLUS', schema='DWH', table='INPUT_PROVEEDORES_ITEM_LOC')
+    cursor.execute('''
+MERGE INTO SANDBOX_PLUS.DWH.COSTO_PROVEEDORES AS TARGET
+USING SANDBOX_PLUS.DWH.INPUT_PROVEEDORES_ITEM_LOC AS SOURCE
+ON
+    TARGET.SUPPLIER = SOURCE.SUPPLIER AND TARGET.LISTA = SOURCE.LISTA AND TARGET.ORIN = SOURCE.ORIN AND TARGET.GEOG_LOCL_COD = SOURCE.GEOG_LOCL_COD
+WHEN MATCHED THEN 
+    UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_ANALISIS = SOURCE.FECHA_ANALISIS;
+''')
+    it = proveedores[(proveedores['GEOG_LOCL_COD'].isna()) & (proveedores['ESTADO'] == 'APROBADA')]
+    loc = proveedores[(~proveedores['GEOG_LOCL_COD'].isna()) & (proveedores['ESTADO'] == 'APROBADA')]
 
     # ================================
     # 📦 ARCHIVO 1: ITEM

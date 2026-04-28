@@ -74,28 +74,44 @@ meses = {1: "ene", 2: "feb", 3: "mar", 4: "abr", 5: "may", 6: "jun",
 
 if 'proveedores' not in st.session_state:
     # Tabla editable (solo columna ESTADO)
-    proveedores = st.data_editor(prov, use_container_width=True, disabled=dis,
+    proveedores = st.data_editor(prov, use_container_width=True, disabled=dis, key="editor_proveedores",
                                  column_config={"ESTADO": st.column_config.SelectboxColumn("Estado",
                                                                                            options=opc,
                                                                                            required=True)})
     # Botón para procesar datos
-    exp = st.button('Explotar')
-    if exp:
-        # Se seleccionan columnas relevantes y se limpian datos
-        aux = proveedores[['LISTA', 'ESTADO']].dropna().drop_duplicates()
+    # exp = st.button('Explotar')
+    # if exp:
+    # # Se seleccionan columnas relevantes y se limpian datos
+    #     aux = proveedores[['LISTA', 'ESTADO']].dropna().drop_duplicates()
 
-        if len(aux) > 0:
-            # Elimina LISTAS duplicadas (regla de negocio)
-            for i in range(aux['LISTA'].value_counts().size):
-                if aux['LISTA'].value_counts().values[i] > 1:
-                    aux = aux[aux['LISTA'] != aux['LISTA'].value_counts().index[i]]
-                else:
-                    break
+    #     if len(aux) > 0:
+    #         # Elimina LISTAS duplicadas (regla de negocio)
+    #         for i in range(aux['LISTA'].value_counts().size):
+    #             if aux['LISTA'].value_counts().values[i] > 1:
+    #                 aux = aux[aux['LISTA'] != aux['LISTA'].value_counts().index[i]]
+    #             else:
+    #                 break
 
-            # Se actualizan los datos en sesión
-            st.session_state.prov = prov.drop(columns='ESTADO').merge(aux, how='left')
+    #         # Se actualizan los datos en sesión
+    #         st.session_state.prov = prov.drop(columns='ESTADO').merge(aux, how='left')
 
-            # Recarga la app
+    #             # Recarga la app
+    #         st.rerun()
+
+    # Procesamiento automático
+    aux = proveedores[['LISTA', 'ESTADO']].dropna().drop_duplicates()
+
+    if len(aux) > 0:
+        # eliminar duplicados de LISTA según tu regla
+        counts = aux['LISTA'].value_counts()
+        listas_validas = counts[counts == 1].index
+        aux = aux[aux['LISTA'].isin(listas_validas)]
+
+        nuevo_df = prov.drop(columns='ESTADO').merge(aux, how='left')
+
+        # Solo actualizar si hubo cambios (evita loops innecesarios)
+        if 'prov' not in st.session_state or not nuevo_df.equals(st.session_state.prov):
+            st.session_state.prov = nuevo_df
             st.rerun()
 
     # Botón para avanzar al armado de archivos
@@ -103,6 +119,7 @@ if 'proveedores' not in st.session_state:
 
     if cont:
         st.session_state.proveedores = proveedores
+        st.rerun()
 
 # ===============================================
 # 📄 GENERACIÓN DE ARCHIVOS Y CARGADO DE TABLAS

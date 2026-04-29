@@ -78,26 +78,6 @@ if 'proveedores' not in st.session_state:
                                  column_config={"ESTADO": st.column_config.SelectboxColumn("Estado",
                                                                                            options=opc,
                                                                                            required=True)})
-    # Botón para procesar datos
-    # exp = st.button('Explotar')
-    # if exp:
-    # # Se seleccionan columnas relevantes y se limpian datos
-    #     aux = proveedores[['LISTA', 'ESTADO']].dropna().drop_duplicates()
-
-    #     if len(aux) > 0:
-    #         # Elimina LISTAS duplicadas (regla de negocio)
-    #         for i in range(aux['LISTA'].value_counts().size):
-    #             if aux['LISTA'].value_counts().values[i] > 1:
-    #                 aux = aux[aux['LISTA'] != aux['LISTA'].value_counts().index[i]]
-    #             else:
-    #                 break
-
-    #         # Se actualizan los datos en sesión
-    #         st.session_state.prov = prov.drop(columns='ESTADO').merge(aux, how='left')
-
-    #             # Recarga la app
-    #         st.rerun()
-
     # Procesamiento automático
     aux = proveedores[['LISTA', 'ESTADO']].dropna().drop_duplicates()
 

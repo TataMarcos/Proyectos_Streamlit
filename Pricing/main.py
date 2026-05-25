@@ -13,6 +13,14 @@ st.title('Pricing')
 st.write('')
 st.write('Bienvenido al programa de Pricing. Elegí en el menú a tu izquierda la función que necesites.')
 
+with open("App Pricing.pdf", "rb") as f:
+    pdf_bytes = f.read()
+
+st.download_button(label="Descargar manual", data=pdf_bytes,
+                   file_name="App Pricing.pdf", mime="application/pdf")
+
+st.write('')
+
 exit_app = st.button("Cerrar el programa.")
 if exit_app:
     st.write('Cerrando el programa...')

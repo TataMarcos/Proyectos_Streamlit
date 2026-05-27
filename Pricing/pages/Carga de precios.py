@@ -6,110 +6,105 @@ from utils import descargar_segmento, snowflake_login, get_credentials, carga_sn
 import io
 import zipfile
 
-st.title('Carga de precios')
+st.set_page_config(page_title="Carga de Precios", page_icon="📥", layout="wide")
 
-#Conectamos a snowflake
+st.title("📥 Carga de precios")
+st.divider()
+
+# Conexión a Snowflake
 credentials_snowflake = get_credentials("snow")
 
 try:
     if 'snow' not in st.session_state:
         user, cursor, snow = snowflake_login(
-                                    user = credentials_snowflake['USER'],
-                                    password = credentials_snowflake['PASS'],
-                                    account = credentials_snowflake['ACCOUNT']
-                                    )
+            user=credentials_snowflake['USER'],
+            password=credentials_snowflake['PASS'],
+            account=credentials_snowflake['ACCOUNT']
+        )
         st.session_state.user = user
         st.session_state.cursor = cursor
         st.session_state.snow = snow
     else:
-        snow = st.session_state.snow  # Reuse the existing Snowflake session
+        snow = st.session_state.snow
         user = st.session_state.user
         cursor = st.session_state.cursor
 except:
-    st.write('Aún no se ingresaron las credenciales')
+    st.error('Error de conexión. Verificá las credenciales de Snowflake.')
     st.stop()
 
 if 'tabla' not in st.session_state:
-    #Cargamos el archivo
-    st.write('Arrastrá el archivo excel con las siguientes columnas [CODIGO_TIENDA,ORIN,PVP_NUEVO,EFFECTIVE_DATE]')
-    uploaded_file = st.file_uploader("Cargar el archivo", type="xlsx")
+    st.info('Arrastrá el archivo Excel con las columnas: **CODIGO_TIENDA, ORIN, PVP_NUEVO, EFFECTIVE_DATE**')
+    uploaded_file = st.file_uploader("Cargar archivo", type="xlsx")
 
-    #Leemos el archivo
     if uploaded_file is not None:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.upper()
     else:
         st.stop()
 
-    #Le damos el formato correcto al archivo
     try:
         df = df[['CODIGO_TIENDA', 'ORIN', 'PVP_NUEVO', 'EFFECTIVE_DATE']]
     except KeyError:
-        st.write('')
-        st.write("❌ Hay un error con las columnas. Verifica que todas existan en el archivo.")
+        st.error("Error en las columnas. Verificá que todas existan en el archivo.")
         st.stop()
 
-    # Validar que las columnas númericas contengan solo números enteros
     try:
         df['CODIGO_TIENDA'] = df['CODIGO_TIENDA'].astype('int64')
         df['ORIN'] = df['ORIN'].astype('int64').astype('str')
         df['PVP_NUEVO'] = df['PVP_NUEVO'].astype('int64')
         df['EFFECTIVE_DATE'] = pd.to_datetime(df['EFFECTIVE_DATE']).dt.strftime('%Y-%m-%d')
     except KeyError:
-        st.write('')
-        st.write("❌ Hay un error con las columnas. Verificar las columnas numéricas.")
+        st.error("Error en columnas numéricas. Verificá los tipos de dato.")
         st.stop()
 
-    st.write("✅ Archivo validado correctamente. Puedes continuar.")
-    st.write('')
-    st.write('El archivo seleccionado es asi:')
-    st.dataframe(df.head())
+    st.success("Archivo validado correctamente.")
 
-    st.write('')
-    st.write('El archivo tiene un total de ', len(df), ' combinaciones para cambios de precio')
+    col_tot, col_cero = st.columns(2)
+    col_tot.metric("Combinaciones cargadas", len(df))
+    if len(df[df.PVP_NUEVO == 0]) > 0:
+        col_cero.metric("Líneas con precio $0 (descartadas)", len(df[df.PVP_NUEVO == 0]))
+        st.warning(f"Se descartarán {len(df[df.PVP_NUEVO==0])} líneas con precio $0.")
 
-    if len(df[df.PVP_NUEVO==0]) > 0:
-        st.write('')
-        st.write('Hay', len(df[df.PVP_NUEVO==0]), ' lineas con precio 0$. Voy a descartar estos datos')
-
-    df = df[df.PVP_NUEVO!=0]
+    df = df[df.PVP_NUEVO != 0]
+    st.dataframe(df.head(), use_container_width=True)
 
     f = datetime.now().strftime('%Y%m%d_%H%M%S')
+    df['TABLA'] = str(f)
+    df.columns = df.columns.str.upper()
+    df = df[['CODIGO_TIENDA', 'ORIN', 'PVP_NUEVO', 'EFFECTIVE_DATE', 'TABLA']]
 
-    st.write(f)
-
-    df['TABLA']=str(f)
-    df.columns=df.columns.str.upper()
-    df=df[['CODIGO_TIENDA', 'ORIN', 'PVP_NUEVO', 'EFFECTIVE_DATE', 'TABLA']]
-
-    #cargo a snowflake las combinaciones a impactar
-    try:
-        st.write('')
-        st.write('Cargando tabla auxiliar')
+    with st.spinner('Cargando tabla auxiliar en Snowflake...'):
         time.sleep(3)
-        success, nchunks, nrows, _ = carga_snow_generic(df=df, ctx=snow, database='SANDBOX_PLUS',
-                                                        schema='DWH', table='INPUT_PRICING_ACUMULADO')
-        st.write('')
-        st.write(f"Éxito: {success}, Chunks: {nchunks}, Filas insertadas: {nrows}")
-        st.session_state.tabla = f
-    except Exception as e:
-        st.write(f"Error al cargar en Snowflake: {e}")
-        st.stop()
+        try:
+            success, nchunks, nrows, _ = carga_snow_generic(
+                df=df, ctx=snow, database='SANDBOX_PLUS', schema='DWH',
+                table='INPUT_PRICING_ACUMULADO'
+            )
+            st.success(f"Tabla cargada: {nrows} filas insertadas.")
+            st.session_state.tabla = f
+        except Exception as e:
+            st.error(f"Error al cargar en Snowflake: {e}")
+            st.stop()
 
 if 'tabla' in st.session_state:
     time.sleep(2)
 else:
     st.stop()
 
-#Filtros
+# Selección de filtros
 if 'filtros_carga_precios' not in st.session_state:
-    filtros_posibles = {'EXCLUIDOS COMERCIAL':'EXCLUIDO_COMERCIAL = 0',
-                        'PROMOCION':'ESTA_EN_PROMO = 0', 'ACTIVOS':'ARTC_ESTA_ID = 4',
-                        'PRECIO DIFERENTE':'S.STCK_PRECIO_VENTA_DIA_CIVA <> A.PVP_NUEVO'}
+    st.divider()
+    st.subheader("Filtros de validación")
+    filtros_posibles = {
+        'EXCLUIDOS COMERCIAL': 'EXCLUIDO_COMERCIAL = 0',
+        'PROMOCION': 'ESTA_EN_PROMO = 0',
+        'ACTIVOS': 'ARTC_ESTA_ID = 4',
+        'PRECIO DIFERENTE': 'S.STCK_PRECIO_VENTA_DIA_CIVA <> A.PVP_NUEVO'
+    }
     filtros = st.multiselect('Filtros:', list(filtros_posibles.keys()), list(filtros_posibles.keys()))
 
-    st.write('Seleccionar los filtros y aguardar...')
-    time.sleep(10)
+    with st.spinner('Aplicando filtros...'):
+        time.sleep(10)
 
     todos_los_filtros = []
     for f in filtros:
@@ -122,81 +117,52 @@ if 'filtros_carga_precios' not in st.session_state:
 
 if 'filtros_carga_precios' in st.session_state:
     todos_los_filtros = st.session_state.filtros_carga_precios
-    st.write('')
-    st.write('Filtros guardados')
+    st.info("Filtros guardados.")
 else:
     st.stop()
 
+# Chequeos de validación
 if 'checks_carga_precios' not in st.session_state:
-    st.write('')
-    st.write('')
-    st.write('-------------------------------------------------------------------------')
-    st.write('--------------------HAGO UNOS CHEQUEOS-----------------------------------')
+    st.divider()
+    st.subheader("Validaciones")
 
-    time.sleep(3)
-    
-    conds = []
-    conds.append("'" + st.session_state.tabla + "'")
+    conds = ["'" + st.session_state.tabla + "'"]
 
-    duplicados = descargar_segmento(cursor, 'DUPLICADOS', conds=conds)
+    with st.spinner('Verificando duplicados...'):
+        time.sleep(3)
+        duplicados = descargar_segmento(cursor, 'DUPLICADOS', conds=conds)
+
     if len(duplicados) > 0:
-        st.write('')
-        st.write('Se encontraron ', len(duplicados), ' duplicados:')
-        st.write('')
-        st.dataframe(duplicados)
-        st.write('')
-        st.write('Descarto los duplicados')
+        st.warning(f"Se encontraron {len(duplicados)} duplicados. Serán descartados.")
+        with st.expander("Ver duplicados"):
+            st.dataframe(duplicados, use_container_width=True)
     else:
-        st.write('')
-        st.write('No hay duplicados de items-local')
+        st.success("Sin duplicados de ítem-local.")
 
-    time.sleep(3)
-
-    checks = descargar_segmento(cursor, query='TOTAL', conds=conds)
-    checks.columns = checks.columns.str.lower()
-    checks.integrantes_familia = checks.integrantes_familia.astype('int64')
-
-    st.write('Hay un total de ', len(checks), ' combinaciones local sin aplicar filtros')
-
-    time.sleep(3)
+    with st.spinner('Ejecutando chequeos generales...'):
+        time.sleep(3)
+        checks = descargar_segmento(cursor, query='TOTAL', conds=conds)
+        checks.columns = checks.columns.str.lower()
+        checks.integrantes_familia = checks.integrantes_familia.astype('int64')
 
     familia = checks[checks.integrantes_familia > 1]
-    st.write('Hay ', len(familia[['familia', 'geog_locl_cod']].drop_duplicates()),
-            ' combinaciones familia-local')
-    st.write('Generan un total de ', len(familia[['orin', 'geog_locl_cod']]),
-            ' combinaciones item-local')
-
-    time.sleep(3)
-
     ex = checks[checks.excluido_comercial == 1]
-    if len(ex[['orin', 'geog_locl_cod']]) > 0:
-        st.write('Hay ', len(ex[['orin', 'geog_locl_cod']]),
-                ' combinaciones item-local excluidos por comercial')
-        st.write('Hay ', len(ex[['orin']].drop_duplicates()), 'items unicos excluidos por comercial')
-    else:
-        st.write('No hay items excluidos por comercial para cargar')
-
-    time.sleep(3)
-
     promo = checks[checks.esta_en_promo == 1]
-    if len(promo[['orin', 'geog_locl_cod']]) > 0:
-        st.write('Hay ', len(promo[['orin', 'geog_locl_cod']]), ' combinaciones item-local en promo')
-    else:
-        st.write('No hay items en promo')
-
-    time.sleep(3)
-
     activo = checks[checks.estado != 4]
-    if len(activo[['orin', 'geog_locl_cod']]) > 0:
-        st.write('Hay ', len(activo[['orin', 'geog_locl_cod']]), ' combinaciones item-local no activas')
-    else:
-        st.write('Todas las combinaciones estan activas')
-
-    time.sleep(3)
-
     precio = checks[checks.precio_diferente == 0]
-    st.write('Hay ', len(precio[['orin', 'geog_locl_cod']]),
-             ' combinaciones item-local con ese mismo precio')
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Combinaciones totales", len(checks))
+    col2.metric("Combinaciones familia-local", len(familia[['familia', 'geog_locl_cod']].drop_duplicates()))
+    col3.metric("Combinaciones ítem-local (familias)", len(familia[['orin', 'geog_locl_cod']]))
+
+    col4, col5, col6 = st.columns(3)
+    col4.metric("Excluidos por comercial", len(ex[['orin', 'geog_locl_cod']]))
+    col5.metric("Ítems en promoción", len(promo[['orin', 'geog_locl_cod']]))
+    col6.metric("Combinaciones no activas", len(activo[['orin', 'geog_locl_cod']]))
+
+    st.metric("Con mismo precio actual", len(precio[['orin', 'geog_locl_cod']]))
+
     st.session_state.checks_carga_precios = checks
 
 if 'checks_carga_precios' in st.session_state:
@@ -204,8 +170,11 @@ if 'checks_carga_precios' in st.session_state:
 else:
     st.stop()
 
-#una vez validado inserto los precios en recopilacion modificaciones precio
+# Inserción final
 if 'final_carga_precios' not in st.session_state:
+    conds = ["'" + st.session_state.tabla + "'"]
+    todos_los_filtros = st.session_state.filtros_carga_precios
+
     query = f"""
 INSERT INTO SANDBOX_PLUS.DWH.RECOPILACION_MODIFICACIONES_PRECIOS_BIS
 WITH LIMPIO AS (
@@ -240,7 +209,7 @@ SELECT
         WHEN B.CANASTA = 'MARCA PROPIA' THEN 4 WHEN B.CANASTA IS NULL THEN 5 ELSE 6 END AS PRIORIDAD_CANASTA,
     NULL AS PRIORIDAD_FUENTE, CURRENT_DATE AS FECHA_ANALISIS
 FROM
-    SANDBOX_PLUS.DWH.RESULTADO_PRICING_HISTORICO_BIS B 
+    SANDBOX_PLUS.DWH.RESULTADO_PRICING_HISTORICO_BIS B
 JOIN
     LIMPIO A
 ON
@@ -265,36 +234,31 @@ SELECT
 FROM
     FILTRO;
     """
-    cursor.execute(query)
 
-    time.sleep(3)
+    with st.spinner('Insertando precios validados...'):
+        time.sleep(3)
+        cursor.execute(query)
 
-    #ULTIMO CHEQUEO
     final = descargar_segmento(cursor, query='FINAL', conds=conds)
     final.columns = final.columns.str.upper()
-    st.dataframe(final)
 
-    st.write('')
-    st.write('Finalmente quedaron ', len(final), ' combinaciones para impactar')
+    st.divider()
+    st.subheader("Resultado final")
+    st.metric("Combinaciones a impactar", len(final))
+    st.dataframe(final, use_container_width=True)
 
-    time.sleep(3)
+    with st.spinner('Generando archivos para la web...'):
+        time.sleep(3)
+        datos = descargar_segmento(cursor, 'DATOS', conds=conds)
+        datos['CHANGE_AMOUNT'] = datos['CHANGE_AMOUNT'].astype('int64')
+        datos['EFFECTIVE_DATE'] = pd.to_datetime(datos['EFFECTIVE_DATE']).dt.strftime('%d/%m/%Y')
 
-    #genero archivos para la web
-    datos = descargar_segmento(cursor, 'DATOS', conds=conds)
-    datos['CHANGE_AMOUNT'] = datos['CHANGE_AMOUNT'].astype('int64')
-    datos['EFFECTIVE_DATE'] = pd.to_datetime(datos['EFFECTIVE_DATE'])
-
-    # Cambiar el formato a día/mes/año
-    datos['EFFECTIVE_DATE'] = datos['EFFECTIVE_DATE'].dt.strftime('%d/%m/%Y')
-    d = datos[['LOCATION', 'EFFECTIVE_DATE',
-               'CHANGE_AMOUNT']].groupby(['LOCATION',
-                                          'EFFECTIVE_DATE']).count().reset_index().sort_values(by='CHANGE_AMOUNT', ascending=False)
-    d.rename(columns={'CHANGE_AMOUNT':'COMBINACIONES'}, inplace=True)
-    st.write('')
-    st.write('Combinaciones por local:')
-    st.dataframe(d)
-
-    time.sleep(3)
+    d = (datos[['LOCATION', 'EFFECTIVE_DATE', 'CHANGE_AMOUNT']]
+         .groupby(['LOCATION', 'EFFECTIVE_DATE']).count().reset_index()
+         .sort_values(by='CHANGE_AMOUNT', ascending=False))
+    d.rename(columns={'CHANGE_AMOUNT': 'COMBINACIONES'}, inplace=True)
+    with st.expander("Combinaciones por local"):
+        st.dataframe(d, use_container_width=True)
 
     st.session_state.final_carga_precios = datos
 
@@ -304,90 +268,84 @@ if 'final_carga_precios' in st.session_state:
     f = st.session_state.tabla
 
     if 'final_descarga_precios' in st.session_state:
-        st.write('Hay un total de ', len(checks), ' combinaciones local sin aplicar filtros')
-
+        st.divider()
+        st.subheader("Resumen de validaciones")
         familia = checks[checks.integrantes_familia > 1]
-        st.write('Hay ', len(familia[['familia', 'geog_locl_cod']].drop_duplicates()),
-                ' combinaciones familia-local')
-        st.write('Generan un total de ', len(familia[['orin', 'geog_locl_cod']]),
-                ' combinaciones item-local')
-
         ex = checks[checks.excluido_comercial == 1]
-        if len(ex[['orin', 'geog_locl_cod']]) > 0:
-            st.write('Hay ', len(ex[['orin', 'geog_locl_cod']]),
-                    ' combinaciones item-local excluidos por comercial')
-            st.write('Hay ', len(ex[['orin']].drop_duplicates()), 'items unicos excluidos por comercial')
-        else:
-            st.write('No hay items excluidos por comercial para cargar')
-
         promo = checks[checks.esta_en_promo == 1]
-        if len(promo[['orin', 'geog_locl_cod']]) > 0:
-            st.write('Hay ', len(promo[['orin', 'geog_locl_cod']]), ' combinaciones item-local en promo')
-        else:
-            st.write('No hay items en promo')
-
         activo = checks[checks.estado != 4]
-        if len(activo[['orin', 'geog_locl_cod']]) > 0:
-            st.write('Hay ', len(activo[['orin', 'geog_locl_cod']]), ' combinaciones item-local no activas')
-        else:
-            st.write('Todas las combinaciones estan activas')
-
         precio = checks[checks.precio_diferente == 0]
-        st.write('Hay ', len(precio[['orin', 'geog_locl_cod']]),
-                ' combinaciones item-local con ese mismo precio')
-    
-    st.write('')
-    filas_por_archivo=2999
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Combinaciones totales", len(checks))
+        col2.metric("Combinaciones familia-local", len(familia[['familia', 'geog_locl_cod']].drop_duplicates()))
+        col3.metric("Excluidos por comercial", len(ex[['orin', 'geog_locl_cod']]))
+
+        col4, col5, col6 = st.columns(3)
+        col4.metric("En promoción", len(promo[['orin', 'geog_locl_cod']]))
+        col5.metric("No activos", len(activo[['orin', 'geog_locl_cod']]))
+        col6.metric("Con mismo precio", len(precio[['orin', 'geog_locl_cod']]))
+
+    st.divider()
+    filas_por_archivo = 2999
     num_archivos = len(datos) // filas_por_archivo + (1 if len(datos) % filas_por_archivo else 0)
-    st.write('Filas por archivo: ' + str(filas_por_archivo))
-    st.write('Cantidad de archivos: ' + str(num_archivos))
 
-    # Crear ZIP en memoria
+    col_fa, col_ca = st.columns(2)
+    col_fa.metric("Filas por archivo", filas_por_archivo)
+    col_ca.metric("Cantidad de archivos", num_archivos)
+
     buffer_zip = io.BytesIO()
-
     with zipfile.ZipFile(buffer_zip, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for i in range(num_archivos):
             inicio = i * filas_por_archivo
             fin = inicio + filas_por_archivo
             segmento = datos.iloc[inicio:fin]
             nombre_archivo = f"Pricing_WEB_{f}_file_{i+1}.csv"
-            # st.write('Nombre de archivo: ' + nombre_archivo)
             csv = segmento.to_csv(index=False, sep=';')
-            # st.download_button(label='Descargar ' + nombre_archivo, data=csv,
-            #                 file_name=nombre_archivo, mime='text/csv', key=i+1)
-            # Agregar archivo al ZIP
             zip_file.writestr(nombre_archivo, csv)
-
     buffer_zip.seek(0)
 
-    st.download_button(label="Descargar todos los archivos en ZIP", data=buffer_zip,
-                       file_name="Pricing_WEB_archivos.zip", mime="application/zip")
-    #Armamos consolidado
+    col_zip, col_cons = st.columns(2)
+    with col_zip:
+        st.download_button(
+            label="⬇️ Descargar todos los archivos (ZIP)",
+            data=buffer_zip,
+            file_name="Pricing_WEB_archivos.zip",
+            mime="application/zip",
+            use_container_width=True
+        )
     cons = datos[['ITEM', 'LOCATION', 'CHANGE_AMOUNT']]
     cons.columns = ['ORIN', 'CODIGO_TIENDA', 'PVP_NUEVO']
     csv = cons.to_csv(index=False, sep=';')
-    st.download_button(label='Descargar consolidado', data=csv, file_name='Consolidado.csv', mime='text/csv')
+    with col_cons:
+        st.download_button(
+            label="⬇️ Descargar consolidado",
+            data=csv,
+            file_name='Consolidado.csv',
+            mime='text/csv',
+            use_container_width=True
+        )
 
     desc = st.button('Terminó descarga')
     if desc:
         st.session_state.final_descarga_precios = True
 
 if 'final_descarga_precios' in st.session_state:
-    st.write('Archivo a cargar:')
-    st.dataframe(st.session_state.final_carga_precios)
-    st.write('')
-    borrado = st.text_input("Desea registrar estos precios como enviados? (si/no)").strip().lower()
+    st.divider()
+    st.subheader("Confirmar envío")
+    st.dataframe(st.session_state.final_carga_precios, use_container_width=True)
+    borrado = st.text_input("¿Registrar estos precios como enviados? (si/no)").strip().lower()
     if borrado == '':
         st.stop()
-    elif borrado=='no':
+    elif borrado == 'no':
         cursor.execute(f"DELETE FROM SANDBOX_PLUS.DWH.RECOPILACION_MODIFICACIONES_PRECIOS_BIS WHERE TABLA='{st.session_state.tabla}'")
-        st.write('Datos descartados')
+        st.warning('Datos descartados.')
     else:
-        st.write('Datos grabados')
+        st.success('Datos registrados como enviados.')
 else:
     st.stop()
 
 time.sleep(3)
 
-st.write('')
-st.write("Programa finalizado. Manteniéndose abierto...")
+st.divider()
+st.success("Proceso completado.")

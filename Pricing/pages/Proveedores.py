@@ -225,9 +225,9 @@ if 'proveedores' not in st.session_state:
     # Reglas de aprobación
     st.divider()
     st.subheader("Reglas de aprobación")
-    ap = (df[df['COSTO X INFLACION'] >= df['COSTO_NUEVO']][['LISTA', 'GEOG_LOCL_COD', 'PESO_VENTA']]
-          .groupby(['LISTA', 'GEOG_LOCL_COD']).sum().reset_index())
-    ap.columns = ['LISTA', 'GEOG_LOCL_COD', 'PESO_APROB']
+    ap = (df[df['COSTO X INFLACION'] >= df['COSTO_NUEVO']][['LISTA',
+                                                            'PESO_VENTA']].groupby('LISTA').sum().reset_index())
+    ap.columns = ['LISTA', 'PESO_APROB']
     st.dataframe(ap, use_container_width=True)
 
     df = df.merge(ap, how='left')
@@ -259,7 +259,7 @@ if 'proveedores' not in st.session_state:
 
     cont = st.button('Preparar documentos', use_container_width=False)
     if cont:
-        st.session_state.proveedores = proveedores.drop(columns='SUGERENCIA')
+        st.session_state.proveedores = proveedores.drop(columns=['SUGERENCIA', 'LISTA-SUP'])
         st.rerun()
 
 # Generación de archivos

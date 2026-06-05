@@ -6,7 +6,8 @@ WORKDIR /app
 
 # Copia requirements e instala
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip --no-cache-dir && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copiamos TODO el código de tu proyecto excepto que esté ignorado por el dockerignore 
 COPY . .

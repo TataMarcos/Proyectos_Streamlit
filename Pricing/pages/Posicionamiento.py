@@ -123,7 +123,6 @@ try:
         cursor.execute('DELETE FROM SANDBOX_PLUS.DWH.POSICIONAMIENTO;')
         success = carga_snow_generic(df=snow_up, ctx=snow, table='POSICIONAMIENTO',
                                      database='SANDBOX_PLUS', schema='DWH')
-
     if success:
         st.divider()
         st.success('Tabla de posicionamiento actualizada correctamente.')

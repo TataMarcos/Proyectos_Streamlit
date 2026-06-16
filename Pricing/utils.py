@@ -18,14 +18,27 @@ def get_credentials(type: str) -> dict:
     try:
         if type == 'credentials_mail_servicio':
             with open(path_base + 'leo_usuario_servicio_credenciales.json') as f:
-                credentials = json.load(f)#[type]
+                credentials = json.load(f)
         else:
             with open(path_base + 'credentials.json') as f:
                 credentials = json.load(f)[type]
-    except:
+        return credentials
+    except FileNotFoundError:
+        if type == 'snow':
+            with st.sidebar:
+                st.subheader("🔐 Conexión Snowflake")
+                snow_user = st.text_input("Usuario", key="_snow_user")
+                snow_pass = st.text_input("Contraseña", type="password", key="_snow_pass")
+                snow_acc  = st.text_input("Account",   key="_snow_account")
+            if not (snow_user and snow_pass and snow_acc):
+                st.info("Ingresá las credenciales de Snowflake en el panel izquierdo.")
+                st.stop()
+            return {"USER": snow_user, "PASS": snow_pass, "ACCOUNT": snow_acc}
         print('Falló lectura de credenciales. Chequear nombre de repositorio.')
         sys.exit()
-    return credentials
+    except Exception:
+        print('Falló lectura de credenciales. Chequear nombre de repositorio.')
+        sys.exit()
 
 def snowflake_login(user: str, password: str, account: str):
 

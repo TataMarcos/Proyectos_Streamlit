@@ -151,43 +151,26 @@ except:
 # Carga de datos
 if 'prov' not in st.session_state:
     cursor.execute('SELECT * FROM SANDBOX_PLUS.DWH.COSTO_PROVEEDORES WHERE ESTADO IS NULL;')
-    prov = cursor.fetch_pandas_all().drop(columns='FECHA_ANALISIS').sort_values(
+    prov = cursor.fetch_pandas_all().drop(columns='FECHA_IMPACTO').sort_values(
         ['LISTA', 'GEOG_LOCL_COD']).reset_index(drop=True)
 else:
     prov = st.session_state.prov
 
 opc = ["APROBADA", "RECHAZADA"]
-dis = list(prov.columns)
-dis.remove('ESTADO')
 dt = date.today().strftime('20%y-%m-%d')
 meses = {1: "ene", 2: "feb", 3: "mar", 4: "abr", 5: "may", 6: "jun",
          7: "jul", 8: "ago", 9: "sep", 10: "oct", 11: "nov", 12: "dic"}
 
 # Edición y aprobación
 if 'proveedores' not in st.session_state:
-    prov['LISTA-SUP'] = prov['LISTA'].astype('str') + ' - ' + prov['SUP_NAME']
-    lista = st.multiselect('Listas', options=prov['LISTA-SUP'].unique(), default=prov['LISTA-SUP'].unique())
-    cont = st.selectbox('Contrato firmado', ['TODOS', 'SI', 'NO'])
-
-    df = prov[prov['LISTA-SUP'].isin(lista)]
-    if cont == 'SI':
-        df = df[~df['CONTRATOS_DESDE'].isna()]
-    elif cont == 'NO':
-        df = df[df['CONTRATOS_DESDE'].isna()]
-
-    st.divider()
     st.subheader("Inflación de referencia")
 
     inflacion = pd.read_excel("Inflación.xlsx")
     inflacion_usa = pd.read_excel("Inflacion USA.xlsx")
-
+    
     col_uy, col_usa = st.columns(2)
     col_uy.metric("Último período Uruguay", max(inflacion['Mes']))
     col_usa.metric("Último período USA", max(inflacion_usa['Mes']))
-
-    ultimo_periodo = pd.Period(max(inflacion['Mes']), freq="M")
-    inflacion["Mes"] = inflacion["Mes"].apply(lambda x: pd.Period(x, freq="M"))
-    inflacion_usa["Mes"] = inflacion_usa["Mes"].apply(lambda x: pd.Period(x, freq="M"))
 
     dec_inf = st.selectbox('¿Desea agregar un período más?', options=['Si', 'No'], key=1)
     if dec_inf.lower() == 'si':
@@ -203,6 +186,26 @@ if 'proveedores' not in st.session_state:
         pass
     else:
         st.stop()
+    
+    st.divider()
+
+    st.subheader("Filtros")
+
+    prov['LISTA-SUP'] = prov['LISTA'].astype('str') + ' - ' + prov['SUP_NAME']
+    lista = st.multiselect('Listas', options=prov['LISTA-SUP'].unique(), default=prov['LISTA-SUP'].unique())
+    cont = st.selectbox('Contrato firmado', ['TODOS', 'SI', 'NO'])
+
+    df = prov[prov['LISTA-SUP'].isin(lista)]
+    if cont == 'SI':
+        df = df[~df['CONTRATOS_DESDE'].isna()]
+    elif cont == 'NO':
+        df = df[df['CONTRATOS_DESDE'].isna()]
+
+    inflacion["Mes"] = inflacion["Mes"].apply(lambda x: pd.Period(str(x), freq="M"))
+    inflacion_usa["Mes"] = inflacion_usa["Mes"].apply(lambda x: pd.Period(str(x), freq="M"))
+    inflacion["factor"] = 1 + inflacion["Inflacion"] / 100
+    inflacion_usa["factor"] = 1 + inflacion_usa["Inflacion"] / 100
+    ultimo_periodo = inflacion["Mes"].max()
 
     inf_12 = round(inflacion_movil(inflacion["Inflacion"], 12) / 100, 4)
     inf_24 = round(inflacion_movil(inflacion["Inflacion"], 24) / 100, 4)
@@ -214,13 +217,20 @@ if 'proveedores' not in st.session_state:
     df['COSTO X INFLACION 2AM'] = df['COSTO_ACTUAL'] * (1 + inf_24)
     df['COSTO X INFLACION AM USA'] = df['COSTO_ACTUAL'] * (1 + inf_12_usa)
     df['COSTO X INFLACION 2AM USA'] = df['COSTO_ACTUAL'] * (1 + inf_24_usa)
-    df["factor_inflacion"] = df["ULTIMO_CAMBIO"].apply(calcular_factor_acumulado)
-    df['COSTO X INFLACION'] = df["COSTO_ACTUAL"] * (df["factor_inflacion"] + 0.18)
+    df["INFLACION"] = df["ULTIMO_CAMBIO"].apply(calcular_factor_acumulado)
     df["factor_inflacion_usa"] = df["ULTIMO_CAMBIO"].apply(calcular_factor_acumulado_usa)
-    df['COSTO X INFLACION USA'] = df["COSTO_ACTUAL"] * df["factor_inflacion_usa"]
-    df.loc[df[df['MONEDA'] == 'USD'].index, 'COSTO X INFLACION'] = df.loc[
-        df[df['MONEDA'] == 'USD'].index, 'COSTO X INFLACION USA']
+    df.loc[df[df['MONEDA'] == 'USD'].index, 'INFLACION'] = df.loc[
+        df[df['MONEDA'] == 'USD'].index, 'factor_inflacion_usa']
+    df['COSTO X INFLACION'] = df["COSTO_ACTUAL"] * df["INFLACION"]
     df['COSTO X INFLACION'] = df['COSTO X INFLACION'].round(2)
+    df['INFLACION'] = df['INFLACION'] - 1
+    df['DIF INCREMENTO'] = df['INCREMENTO'] - df['INFLACION']
+    df['INFLACION AM'] = inf_12
+    df.loc[df[df['MONEDA'] == 'USD'].index, 'INFLACION AM'] = inf_12_usa
+    df['DIF INCREMENTO AM'] = df['INCREMENTO'] - df['INFLACION AM']
+    df['INFLACION 2AM'] = inf_24
+    df.loc[df[df['MONEDA'] == 'USD'].index, 'INFLACION 2AM'] = inf_24_usa
+    df['DIF INCREMENTO 2AM'] = df['INCREMENTO'] - df['INFLACION 2AM']
 
     # Reglas de aprobación
     st.divider()
@@ -236,7 +246,17 @@ if 'proveedores' not in st.session_state:
     df.loc[df[(df['PESO_APROB'] >= 0.9) & (df['PESO_APROB'] < 0.95)].index, 'SUGERENCIA'] = 'Revisar'
 
     df['GEOG_LOCL_COD'] = df['GEOG_LOCL_COD'].replace(0, pd.NA)
-    df = df[dis + ['SUGERENCIA', 'ESTADO']]
+    df = df[['FECHA_SOLICITUD', 'GEOG_LOCL_COD', 'SUPPLIER', 'SUP_NAME', 'LISTA', 'GRUPO', 'DEPT', 'CLASS',
+             'SUBCLASS', 'FAMILIA', 'INTEGRANTES', 'HERMANO', 'ORIN', 'ARTC_ARTC_DESC', 'VENTA_TOTAL_LISTA',
+             'PESO_VENTA', 'IVA', 'COSTO_ACTUAL', 'MONEDA', 'COSTO_NUEVO', 'ULTIMO_CAMBIO', 'CANT_CAMBIOS_UA',
+             'CANT_CAMBIOS_U2A', 'INCREMENTO', 'INFLACION', 'COSTO X INFLACION', 'DIF INCREMENTO',
+             'DIF INCREMENTO AM', 'DIF INCREMENTO 2AM', 'CONTRATOS_DESDE', 'CONTRATOS_HASTA',
+             'CONTRATOS_VENCIMIENTO', 'PVP_ACTUAL', 'MG_ACTUAL', 'PVP_SUGERIDO', 'MG', 'PVP_MARGEN_OBJETIVO',
+             'ESTA_EN_PROMO', 'PROM_FECHA_INICIO', 'PROM_FECHA_FIN', 'SUGERENCIA', 'ESTADO', 'MENSAJE']]
+    
+    dis = list(df.columns)
+    dis.remove('ESTADO')
+    dis.remove('MENSAJE')
 
     st.divider()
     st.subheader("Revisión por lista")
@@ -248,18 +268,19 @@ if 'proveedores' not in st.session_state:
     )
 
     aux = proveedores[['LISTA', 'ESTADO']].dropna().drop_duplicates()
+    mens = proveedores[['ORIN', 'LISTA', 'MENSAJE']].dropna().drop_duplicates()
     if len(aux) > 0:
         counts = aux['LISTA'].value_counts()
         listas_validas = counts[counts == 1].index
         aux = aux[aux['LISTA'].isin(listas_validas)]
-        nuevo_df = prov.drop(columns='ESTADO').merge(aux, how='left')
+        nuevo_df = prov.drop(columns=['ESTADO', 'MENSAJE']).merge(aux, how='left').merge(mens, how='left')
         if 'prov' not in st.session_state or not nuevo_df.equals(st.session_state.prov):
             st.session_state.prov = nuevo_df
             st.rerun()
 
     cont = st.button('Preparar documentos', use_container_width=False)
     if cont:
-        st.session_state.proveedores = proveedores.drop(columns=['SUGERENCIA', 'LISTA-SUP'])
+        st.session_state.proveedores = proveedores.drop(columns='SUGERENCIA')
         st.rerun()
 
 # Generación de archivos
@@ -268,38 +289,46 @@ if 'proveedores' in st.session_state:
     st.subheader("Generación de archivos")
 
     proveedores = st.session_state.proveedores
-    carga = proveedores[proveedores['ESTADO'].isin(['APROBADA', 'RECHAZADA'])]
-    carga['FECHA_ANALISIS'] = dt
+    cols = ['FECHA_SOLICITUD', 'GEOG_LOCL_COD', 'SUPPLIER', 'SUP_NAME', 'LISTA', 'GRUPO', 'DEPT', 'CLASS',
+            'SUBCLASS', 'FAMILIA', 'INTEGRANTES', 'HERMANO', 'ORIN', 'ARTC_ARTC_DESC', 'VENTA_TOTAL_LISTA',
+            'PESO_VENTA', 'IVA', 'COSTO_ACTUAL', 'MONEDA', 'COSTO_NUEVO', 'ULTIMO_CAMBIO',
+            'CANT_CAMBIOS_UA', 'CANT_CAMBIOS_U2A', 'INCREMENTO', 'CONTRATOS_DESDE', 'CONTRATOS_HASTA',
+            'CONTRATOS_VENCIMIENTO', 'PVP_ACTUAL', 'MG_ACTUAL', 'PVP_SUGERIDO', 'MG', 'PVP_MARGEN_OBJETIVO',
+            'ESTA_EN_PROMO', 'PROM_FECHA_INICIO', 'PROM_FECHA_FIN', 'ESTADO', 'MENSAJE']
+    if 'carga_prov' not in st.session_state:
+        carga = proveedores[proveedores['ESTADO'].isin(['APROBADA', 'RECHAZADA'])][cols]
+        carga['FECHA_IMPACTO'] = dt
 
-    with st.spinner('Subiendo datos a Snowflake...'):
-        success = carga_snow_generic(df=carga[carga['GEOG_LOCL_COD'].isna()], ctx=snow,
-                                     database='SANDBOX_PLUS', schema='DWH', table='INPUT_PROVEEDORES_ITEM')
-        cursor.execute('''
+        with st.spinner('Subiendo datos a Snowflake...'):
+            success = carga_snow_generic(df=carga[carga['GEOG_LOCL_COD'].isna()], ctx=snow,
+                                        database='SANDBOX_PLUS', schema='DWH', table='INPUT_PROVEEDORES_ITEM')
+            cursor.execute('''
 MERGE INTO SANDBOX_PLUS.DWH.COSTO_PROVEEDORES AS TARGET
 USING SANDBOX_PLUS.DWH.INPUT_PROVEEDORES_ITEM AS SOURCE
 ON
     TARGET.SUPPLIER = SOURCE.SUPPLIER AND TARGET.LISTA = SOURCE.LISTA AND TARGET.ORIN = SOURCE.ORIN
 WHEN MATCHED THEN
-    UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_ANALISIS = SOURCE.FECHA_ANALISIS;
+    UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_IMPACTO = SOURCE.FECHA_IMPACTO, TARGET.MENSAJE = SOURCE.MENSAJE;
 ''')
-        success = carga_snow_generic(df=carga[~carga['GEOG_LOCL_COD'].isna()], ctx=snow,
-                                     database='SANDBOX_PLUS', schema='DWH', table='INPUT_PROVEEDORES_ITEM_LOC')
-        cursor.execute('''
+            success = carga_snow_generic(df=carga[~carga['GEOG_LOCL_COD'].isna()], ctx=snow,
+                                        database='SANDBOX_PLUS', schema='DWH', table='INPUT_PROVEEDORES_ITEM_LOC')
+            cursor.execute('''
 MERGE INTO SANDBOX_PLUS.DWH.COSTO_PROVEEDORES AS TARGET
 USING SANDBOX_PLUS.DWH.INPUT_PROVEEDORES_ITEM_LOC AS SOURCE
 ON
     TARGET.SUPPLIER = SOURCE.SUPPLIER AND TARGET.LISTA = SOURCE.LISTA AND TARGET.ORIN = SOURCE.ORIN AND TARGET.GEOG_LOCL_COD = SOURCE.GEOG_LOCL_COD
 WHEN MATCHED THEN
-    UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_ANALISIS = SOURCE.FECHA_ANALISIS;
+    UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_IMPACTO = SOURCE.FECHA_IMPACTO, TARGET.MENSAJE = SOURCE.MENSAJE;
 ''')
 
-    st.success("Datos actualizados en Snowflake.")
+        st.success("Datos actualizados en Snowflake.")
+        st.session_state.carga_prov = True
 
     it = proveedores[(proveedores['GEOG_LOCL_COD'].isna()) & (proveedores['ESTADO'] == 'APROBADA')]
     loc = proveedores[(~proveedores['GEOG_LOCL_COD'].isna()) & (proveedores['ESTADO'] == 'APROBADA')]
 
     # Archivo 1: ITEM
-    cc = loc[['SUPPLIER', 'LISTA']].drop_duplicates()
+    cc = it[['SUPPLIER', 'LISTA']].drop_duplicates()
     cc['Acción'] = 'Crear'
     cc['Cambio de costo'] = 324235334
     cc['Descripción de cambio de costo'] = 'Costo proveedor ' + cc['SUPPLIER'].astype(str) + '. Lista ' + cc['LISTA'].astype(str)

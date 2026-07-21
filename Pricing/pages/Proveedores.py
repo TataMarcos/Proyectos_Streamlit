@@ -77,7 +77,7 @@ def agregaInflacion(k: int, p: str):
             inflacion.loc[len(inflacion)] = (per_nuevo, inf_nueva)
             st.dataframe(inflacion, use_container_width=True)
             k += 1
-            dec_inf = st.selectbox('¿Desea agregar un período más?', options=['Si', 'No'], key=k)
+            dec_inf = st.selectbox('¿Desea agregar un período más?', options=['No', 'Si'], key=k)
             if dec_inf.lower() == 'si':
                 agregaInflacion(k=k + 1, p=p)
             elif dec_inf.lower() == 'no':
@@ -119,7 +119,7 @@ def agregaInflacion(k: int, p: str):
             inflacion_usa.loc[len(inflacion_usa)] = (per_nuevo, inf_nueva)
             st.dataframe(inflacion_usa, use_container_width=True)
             k += 1
-            dec_inf = st.selectbox('¿Desea agregar un período más?', options=['Si', 'No'], key=k)
+            dec_inf = st.selectbox('¿Desea agregar un período más?', options=['No', 'Si'], key=k)
             if dec_inf.lower() == 'si':
                 agregaInflacion(k=k + 1, p=p)
             elif dec_inf.lower() == 'no':
@@ -173,7 +173,7 @@ if 'proveedores' not in st.session_state:
     col_uy.metric("Último período Uruguay", max(inflacion['Mes']))
     col_usa.metric("Último período USA", max(inflacion_usa['Mes']))
 
-    dec_inf = st.selectbox('¿Desea agregar un período de inflación?', options=['Si', 'No'], key=1)
+    dec_inf = st.selectbox('¿Desea agregar un período de inflación?', options=['No', 'Si'], key=1, )
     if dec_inf.lower() == 'si':
         pais = st.selectbox('¿Para qué país?', options=['Uruguay', 'Estados Unidos'], key=2)
         if pais.strip().capitalize() == 'Uruguay':
@@ -308,8 +308,24 @@ if 'proveedores' in st.session_state:
             'CONTRATOS_VENCIMIENTO', 'PVP_ACTUAL', 'MG_ACTUAL', 'PVP_SUGERIDO', 'MG', 'PVP_MARGEN_OBJETIVO',
             'ESTA_EN_PROMO', 'PROM_FECHA_INICIO', 'PROM_FECHA_FIN', 'ESTADO', 'MENSAJE']
     if 'carga_prov' not in st.session_state:
-        carga = proveedores[proveedores['ESTADO'].isin(['APROBADA', 'RECHAZADA'])][cols]
+        carga = proveedores[proveedores['ESTADO'].isin(['APROBADA', 'RECHAZADA'])][cols].fillna({'GEOG_LOCL_COD':0})
         carga['FECHA_IMPACTO'] = dt
+
+        control = carga[['GEOG_LOCL_COD', 'LISTA', 'ORIN',
+                          'COSTO_NUEVO']].groupby(['GEOG_LOCL_COD', 'LISTA', 'ORIN']).count().reset_index()
+        control.columns = ['GEOG_LOCL_COD', 'LISTA', 'ORIN', 'REGISTROS']
+        control = control[control['REGISTROS']>1]
+        if len(control) > 0:
+            st.write('Los siguientes items tienen multiples costos nuevos asociados en las siguientes listas: ')
+            st.dataframe(control.sort_values('REGISTROS', ascending=False))
+            desc = st.selectbox('Descartarlos?', options=['No', 'Si'])
+            if desc == 'No':
+                st.stop()
+            else:
+                carga = carga.merge(control, how='left')
+                carga = carga[carga['REGISTROS'].isna()].drop(columns='REGISTROS')
+                carga['GEOG_LOCL_COD'] = carga['GEOG_LOCL_COD'].replace(0, pd.NA)
+                st.dataframe(carga)
 
         with st.spinner('Subiendo datos a Snowflake...'):
             success = carga_snow_generic(df=carga[carga['GEOG_LOCL_COD'].isna()], ctx=snow,

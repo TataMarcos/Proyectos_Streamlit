@@ -163,16 +163,17 @@ meses = {1: "ene", 2: "feb", 3: "mar", 4: "abr", 5: "may", 6: "jun",
 
 # Edición y aprobación
 if 'proveedores' not in st.session_state:
-    st.subheader("Inflación de referencia")
+    st.subheader("Definición de parámetros")
 
     inflacion = pd.read_excel("Inflación.xlsx")
     inflacion_usa = pd.read_excel("Inflacion USA.xlsx")
-    
+
+    st.markdown("**Inflación de referencia**")
     col_uy, col_usa = st.columns(2)
     col_uy.metric("Último período Uruguay", max(inflacion['Mes']))
     col_usa.metric("Último período USA", max(inflacion_usa['Mes']))
 
-    dec_inf = st.selectbox('¿Desea agregar un período más?', options=['Si', 'No'], key=1)
+    dec_inf = st.selectbox('¿Desea agregar un período de inflación?', options=['Si', 'No'], key=1)
     if dec_inf.lower() == 'si':
         pais = st.selectbox('¿Para qué país?', options=['Uruguay', 'Estados Unidos'], key=2)
         if pais.strip().capitalize() == 'Uruguay':
@@ -186,7 +187,21 @@ if 'proveedores' not in st.session_state:
         pass
     else:
         st.stop()
-    
+
+    st.markdown("**Pesos de aprobación**")
+    col_ap, col_rev = st.columns(2)
+    peso_aprobar = col_ap.number_input(
+        'Peso mínimo para aprobación', min_value=0.0, max_value=1.0,
+        value=0.95, step=0.01, format="%.2f"
+    )
+    peso_revisar = col_rev.number_input(
+        'Peso mínimo para revisión', min_value=0.0, max_value=1.0,
+        value=0.90, step=0.01, format="%.2f"
+    )
+    if peso_revisar > peso_aprobar:
+        st.error('El peso para aprobación debe ser mayor al peso para revisión.')
+        st.stop()
+
     st.divider()
 
     st.subheader("Filtros")
@@ -233,17 +248,14 @@ if 'proveedores' not in st.session_state:
     df['DIF INCREMENTO 2AM'] = df['INCREMENTO'] - df['INFLACION 2AM']
 
     # Reglas de aprobación
-    st.divider()
-    st.subheader("Reglas de aprobación")
     ap = (df[df['COSTO X INFLACION'] >= df['COSTO_NUEVO']][['LISTA',
                                                             'PESO_VENTA']].groupby('LISTA').sum().reset_index())
     ap.columns = ['LISTA', 'PESO_APROB']
-    st.dataframe(ap, use_container_width=True)
 
     df = df.merge(ap, how='left')
     df['SUGERENCIA'] = 'Rechazar'
-    df.loc[df[df['PESO_APROB'] >= 0.95].index, 'SUGERENCIA'] = 'Aprobar'
-    df.loc[df[(df['PESO_APROB'] >= 0.9) & (df['PESO_APROB'] < 0.95)].index, 'SUGERENCIA'] = 'Revisar'
+    df.loc[df[df['PESO_APROB'] >= peso_aprobar].index, 'SUGERENCIA'] = 'Aprobar'
+    df.loc[df[(df['PESO_APROB'] >= peso_revisar) & (df['PESO_APROB'] < peso_aprobar)].index, 'SUGERENCIA'] = 'Revisar'
 
     df['GEOG_LOCL_COD'] = df['GEOG_LOCL_COD'].replace(0, pd.NA)
     df = df[['FECHA_SOLICITUD', 'GEOG_LOCL_COD', 'SUPPLIER', 'SUP_NAME', 'LISTA', 'GRUPO', 'DEPT', 'CLASS',

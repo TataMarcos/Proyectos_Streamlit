@@ -151,8 +151,8 @@ except:
 # Carga de datos
 if 'prov' not in st.session_state:
     cursor.execute('SELECT * FROM SANDBOX_PLUS.DWH.COSTO_PROVEEDORES WHERE ESTADO IS NULL;')
-    prov = cursor.fetch_pandas_all().drop(columns='FECHA_IMPACTO').sort_values(
-        ['LISTA', 'GEOG_LOCL_COD']).reset_index(drop=True)
+    prov = cursor.fetch_pandas_all().drop(columns='FECHA_IMPACTO').sort_values(['LISTA',
+                                                                                'GEOG_LOCL_COD']).reset_index(drop=True)
 else:
     prov = st.session_state.prov
 
@@ -228,6 +228,20 @@ if 'proveedores' not in st.session_state:
     inf_24_usa = round(inflacion_movil(inflacion_usa["Inflacion"], 24) / 100, 4)
 
     df['GEOG_LOCL_COD'] = df['GEOG_LOCL_COD'].fillna(0)
+    control = df[['GEOG_LOCL_COD', 'LISTA', 'ORIN',
+                  'COSTO_NUEVO']].groupby(['GEOG_LOCL_COD', 'LISTA', 'ORIN']).count().reset_index()
+    control.columns = ['GEOG_LOCL_COD', 'LISTA', 'ORIN', 'REGISTROS']
+    control = control[control['REGISTROS']>1]
+    if len(control) > 0:
+        st.write('Los siguientes items tienen multiples costos nuevos asociados en las siguientes listas: ')
+        st.dataframe(control.sort_values('REGISTROS', ascending=False))
+        desc = st.selectbox('Descartarlos?', options=['No', 'Si'])
+        if desc == 'No':
+            st.stop()
+        else:
+            df = df.merge(control, how='left')
+            df = df[df['REGISTROS'].isna()].drop(columns='REGISTROS')
+            st.dataframe(df)
     df['COSTO X INFLACION AM'] = df['COSTO_ACTUAL'] * (1 + inf_12)
     df['COSTO X INFLACION 2AM'] = df['COSTO_ACTUAL'] * (1 + inf_24)
     df['COSTO X INFLACION AM USA'] = df['COSTO_ACTUAL'] * (1 + inf_12_usa)
@@ -310,22 +324,6 @@ if 'proveedores' in st.session_state:
     if 'carga_prov' not in st.session_state:
         carga = proveedores[proveedores['ESTADO'].isin(['APROBADA', 'RECHAZADA'])][cols].fillna({'GEOG_LOCL_COD':0})
         carga['FECHA_IMPACTO'] = dt
-
-        control = carga[['GEOG_LOCL_COD', 'LISTA', 'ORIN',
-                          'COSTO_NUEVO']].groupby(['GEOG_LOCL_COD', 'LISTA', 'ORIN']).count().reset_index()
-        control.columns = ['GEOG_LOCL_COD', 'LISTA', 'ORIN', 'REGISTROS']
-        control = control[control['REGISTROS']>1]
-        if len(control) > 0:
-            st.write('Los siguientes items tienen multiples costos nuevos asociados en las siguientes listas: ')
-            st.dataframe(control.sort_values('REGISTROS', ascending=False))
-            desc = st.selectbox('Descartarlos?', options=['No', 'Si'])
-            if desc == 'No':
-                st.stop()
-            else:
-                carga = carga.merge(control, how='left')
-                carga = carga[carga['REGISTROS'].isna()].drop(columns='REGISTROS')
-                carga['GEOG_LOCL_COD'] = carga['GEOG_LOCL_COD'].replace(0, pd.NA)
-                st.dataframe(carga)
 
         with st.spinner('Subiendo datos a Snowflake...'):
             success = carga_snow_generic(df=carga[carga['GEOG_LOCL_COD'].isna()], ctx=snow,

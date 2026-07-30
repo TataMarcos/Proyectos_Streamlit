@@ -1,15 +1,7 @@
 import pandas as pd
-from datetime import date
-import calendar
-from utils import snowflake_login, carga_snow_generic, descargar_segmento, get_credentials
-import gspread
-from gspread_dataframe import get_as_dataframe
-from google.oauth2.service_account import Credentials
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
-import re
+from utils import snowflake_login, get_credentials
 import streamlit as st
-import numpy as np
+from datetime import datetime, timedelta
 
 #Conectamos a snowflake
 credentials_snowflake = get_credentials("snow")
@@ -32,6 +24,14 @@ except:
     st.write('Aún no se ingresaron las credenciales')
     st.stop()
 
+fechas = []
+for i in range((datetime.today().date() - datetime.today().replace(year=datetime.today().date().year - 1).date()).days):
+    fechas.append((datetime.today().replace(year=datetime.today().date().year - 1).date()
+                   + timedelta(days=i)).strftime('%Y-%m-%d'))
+fechas.reverse()
+
+fecha = st.selectbox('Seleccionar fecha de inicio:', options=fechas)
+
 st.info('Arrastrá el archivo Excel con las columnas: **[LOCAL, ITEM]**')
 uploaded_file = st.file_uploader("Cargar archivo", type="xlsx")
 
@@ -45,8 +45,8 @@ cons['ITEM'] = cons['ITEM'].astype('int64').astype('str')
 cons['LOCAL'] = cons['LOCAL'].astype('int64')
 
 with st.spinner('Consultando en Snowflake...'):
-        try:
-            cursor.execute(f'''
+    try:
+        cursor.execute(f'''
 SELECT 
     LG.GEOG_LOCL_COD AS LOCAL, LAA.ORIN AS ITEM, LAA.ARTC_ARTC_DESC, SUM(FT.VNTA_IMPORTE_SIN_IVA) AS VENTA, SUM(FT.VNTA_UNIDADES) AS VENTA_UNID,
     SUM(FT.VNTA_UNIDADES * COALESCE(FT.VNTA_COSTO_PROM_POND, 0)) AS COSTO, VENTA - COSTO AS GB1, DIV0(GB1, VENTA) AS MARGEN,
@@ -64,20 +64,20 @@ LEFT JOIN
 LEFT JOIN
     MSTRDB.DWH.FT_COSTO_UNITARIO_RMS AS FC ON FC.ARTC_ARTC_ID = FT.ARTC_ARTC_ID AND FC.GEOG_LOCL_ID = FT.GEOG_LOCL_ID AND FC.TIEM_DIA_ID = CURRENT_DATE() - 1
 WHERE
-    FT.TIEM_DIA_ID BETWEEN '2026-06-24' AND CURRENT_DATE - 1
+    FT.TIEM_DIA_ID BETWEEN '{fecha}' AND CURRENT_DATE - 1
 AND
     LAA.ORIN IN ('{"', '".join(str(l) for l in cons['ITEM'].unique())}')
 AND
     LG.GEOG_LOCL_COD IN ({','.join(str(l) for l in cons['LOCAL'].unique())})
 GROUP BY ALL;
 ''')
-            df = cursor.fetch_pandas_all()
-            df['ITEM'] = df['ITEM'].astype('int64').astype('str')
-            df['LOCAL'] = df['LOCAL'].astype('int64')
-            df_final = df.merge(cons)
+        df = cursor.fetch_pandas_all()
+        df['ITEM'] = df['ITEM'].astype('int64').astype('str')
+        df['LOCAL'] = df['LOCAL'].astype('int64')
+        df_final = df.merge(cons)
 
-            csv = df_final.to_csv(index=False)
-            st.dataframe(df_final.head(10), use_container_width=True)
-            st.download_button(label='⬇️ Descargar tabla', data=csv, file_name='Precios.csv', mime='text/csv')
-        except Exception as e:
-            st.error(f'El archivo tiene un formato erróneo. Verificá las columnas LOCAL e ITEM. {e}')
+        csv = df_final.to_csv(index=False)
+        st.dataframe(df_final.head(10), use_container_width=True)
+        st.download_button(label='⬇️ Descargar tabla', data=csv, file_name='Precios.csv', mime='text/csv')
+    except Exception as e:
+        st.error(f'El archivo tiene un formato erróneo. Verificá las columnas LOCAL e ITEM. {e}')

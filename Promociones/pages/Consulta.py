@@ -48,9 +48,9 @@ with st.spinner('Consultando en Snowflake...'):
     try:
         cursor.execute(f'''
 SELECT 
-    LG.GEOG_LOCL_COD AS LOCAL, LAA.ORIN AS ITEM, LAA.ARTC_ARTC_DESC, SUM(FT.VNTA_IMPORTE_SIN_IVA) AS VENTA, SUM(FT.VNTA_UNIDADES) AS VENTA_UNID,
-    SUM(FT.VNTA_UNIDADES * COALESCE(FT.VNTA_COSTO_PROM_POND, 0)) AS COSTO, VENTA - COSTO AS GB1, DIV0(GB1, VENTA) AS MARGEN,
-    VENTA - GB1 AS CPP_VENDIDO, FS.STCK_UNIDADES * FC.UNIT_COST AS CPP_ACTUAL, LA.ARTC_ESTA_DESC
+    LG.GEOG_LOCL_COD AS LOCAL, LAA.ORIN AS ITEM, LAA.ARTC_ARTC_DESC, ROUND(SUM(FT.VNTA_IMPORTE_SIN_IVA), 2) AS VENTA, ROUND(SUM(FT.VNTA_UNIDADES), 2) AS VENTA_UNID,
+    ROUND(SUM(FT.VNTA_UNIDADES * COALESCE(FT.VNTA_COSTO_PROM_POND, 0)), 2) AS COSTO, ROUND(VENTA - COSTO, 2) AS GB1, ROUND(DIV0(GB1, VENTA), 4) AS MARGEN,
+    ROUND(VENTA - GB1, 2) AS CPP_VENDIDO, ROUND(FS.STCK_UNIDADES * FC.UNIT_COST, 2) AS CPP_ACTUAL, LA.ARTC_ESTA_DESC
 FROM
     MSTRDB.DWH.FT_VENTAS AS FT
 JOIN
@@ -76,8 +76,8 @@ GROUP BY ALL;
         df['LOCAL'] = df['LOCAL'].astype('int64')
         df_final = df.merge(cons)
 
-        csv = df_final.to_csv(index=False)
+        csv = df_final.to_csv(index=False, sep=';', decimal=',')
         st.dataframe(df_final.head(10), use_container_width=True)
-        st.download_button(label='⬇️ Descargar tabla', data=csv, file_name='Precios.csv', mime='text/csv')
+        st.download_button(label='⬇️ Descargar tabla', data=csv, file_name='Consulta.csv', mime='text/csv')
     except Exception as e:
         st.error(f'El archivo tiene un formato erróneo. Verificá las columnas LOCAL e ITEM. {e}')

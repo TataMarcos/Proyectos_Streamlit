@@ -78,6 +78,7 @@ elif prog == 'Referente':
 
         referentes['aux'] = 1
         ref['aux'] = 1
+        locales.loc[len(locales)] = [53, 'ECOMMERCE']
         locales['aux'] = 1
 
         carga = referentes.merge(locales).drop(columns=['aux', 'GEOG_DPTO_DESC'])
@@ -182,6 +183,7 @@ elif prog == 'Mercado + Surtido':
         can = descargar_segmento(cursor, 'CANASTAS', conds=[""])
 
     canastas['aux'] = 1
+    locales.loc[len(locales)] = [53, 'ECOMMERCE']
     locales['aux'] = 1
     carga = canastas.merge(locales).drop(columns=['aux', 'GEOG_DPTO_DESC'])
     borrar = can[can['ITEM'].isin(canastas['ITEM'].unique())]

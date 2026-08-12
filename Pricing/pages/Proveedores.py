@@ -31,101 +31,56 @@ def calcular_factor_acumulado(fecha_ultimo_cambio: str) -> float:
 
 def calcular_factor_acumulado_usa(fecha_ultimo_cambio: str) -> float:
     try:
-        periodo_cambio = pd.to_datetime(fecha_ultimo_cambio).to_period("M")
-        periodo_inicio = periodo_cambio + 1
-        mascara = (inflacion_usa["Mes"] >= periodo_inicio) & (inflacion_usa["Mes"] <= ultimo_periodo)
-        factores = inflacion_usa.loc[mascara, "factor"]
-        if factores.empty:
-            return 1.0
-        return factores.prod()
+        cursor.execute(f'''
+SELECT ROUND(DIV0((SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE TIEM_DIA_ID = CURRENT_DATE() AND TIPO_CAMB_MONEDA = 'USD'),
+    (SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE TIEM_DIA_ID = '{fecha_ultimo_cambio}' AND TIPO_CAMB_MONEDA = 'USD')), 4);
+''')
+        return cursor.fetchall()[0][0]
     except:
         return 1.0
 
-def agregaInflacion(k: int, p: str):
-    if p == 'Uruguay':
-        k += 1
-        per_nuevo = st.text_input('Ingrese período con formato (2001-01):', key=k)
-        k += 1
-        inf_nueva = st.text_input('Ingrese inflación del período ingresado con formato (0.1%):', key=k)
-        if (per_nuevo.strip() == '' or inf_nueva.strip() == '' or per_nuevo.find('-') == -1 or
-                len(per_nuevo.split('-')[0]) != 4 or len(per_nuevo.split('-')[1]) != 2):
-            st.info('Aún no se ingresaron valores con formato correcto.')
-            st.stop()
-        else:
-            try:
-                a_nuevo = int(per_nuevo.split('-')[0].strip())
-                m_nuevo = int(per_nuevo.split('-')[1].strip())
-            except:
-                st.error('El formato del período no es correcto.')
-                st.stop()
-            if a_nuevo < int(max(inflacion['Mes']).split('-')[0]):
-                st.error('El período ingresado no es mayor al máximo período.')
-                st.stop()
-            elif m_nuevo <= int(max(inflacion['Mes']).split('-')[1]):
-                st.error('El período ingresado no es mayor al máximo período.')
-                st.stop()
-            else:
-                if len(str(m_nuevo)) == 2:
-                    per_nuevo = str(a_nuevo) + '-' + str(m_nuevo)
-                else:
-                    per_nuevo = str(a_nuevo) + '-0' + str(m_nuevo)
-            try:
-                inf_nueva = float(inf_nueva.replace(',', '.').replace('%', ''))
-            except:
-                st.error('El formato del valor de inflación no es correcto.')
-                st.stop()
-            inflacion.loc[len(inflacion)] = (per_nuevo, inf_nueva)
-            st.dataframe(inflacion, use_container_width=True)
-            k += 1
-            dec_inf = st.selectbox('¿Desea agregar un período más?', options=['No', 'Si'], key=k)
-            if dec_inf.lower() == 'si':
-                agregaInflacion(k=k + 1, p=p)
-            elif dec_inf.lower() == 'no':
-                inflacion.to_excel("Inflación.xlsx", index=False)
-            else:
-                st.stop()
+def agregaInflacion(k: int):
+    k += 1
+    per_nuevo = st.text_input('Ingrese período con formato (2001-01):', key=k)
+    k += 1
+    inf_nueva = st.text_input('Ingrese inflación del período ingresado con formato (0.1%):', key=k)
+    if (per_nuevo.strip() == '' or inf_nueva.strip() == '' or per_nuevo.find('-') == -1 or
+        len(per_nuevo.split('-')[0]) != 4 or len(per_nuevo.split('-')[1]) != 2):
+        st.info('Aún no se ingresaron valores con formato correcto.')
+        st.stop()
     else:
-        k += 1
-        per_nuevo = st.text_input('Ingrese período con formato (2001-01):', key=k)
-        k += 1
-        inf_nueva = st.text_input('Ingrese inflación del período ingresado con formato (0.1%):', key=k)
-        if (per_nuevo.strip() == '' or inf_nueva.strip() == '' or per_nuevo.find('-') == -1 or
-                len(per_nuevo.split('-')[0]) != 4 or len(per_nuevo.split('-')[1]) != 2):
-            st.info('Aún no se ingresaron valores con formato correcto.')
+        try:
+            a_nuevo = int(per_nuevo.split('-')[0].strip())
+            m_nuevo = int(per_nuevo.split('-')[1].strip())
+        except:
+            st.error('El formato del período no es correcto.')
+            st.stop()
+        if a_nuevo < int(max(inflacion['Mes']).split('-')[0]):
+            st.error('El período ingresado no es mayor al máximo período.')
+            st.stop()
+        elif m_nuevo <= int(max(inflacion['Mes']).split('-')[1]):
+            st.error('El período ingresado no es mayor al máximo período.')
             st.stop()
         else:
-            try:
-                a_nuevo = int(per_nuevo.split('-')[0].strip())
-                m_nuevo = int(per_nuevo.split('-')[1].strip())
-            except:
-                st.error('El formato del período no es correcto.')
-                st.stop()
-            if a_nuevo < int(max(inflacion_usa['Mes']).split('-')[0]):
-                st.error('El período ingresado no es mayor al máximo período.')
-                st.stop()
-            elif m_nuevo <= int(max(inflacion_usa['Mes']).split('-')[1]):
-                st.error('El período ingresado no es mayor al máximo período.')
-                st.stop()
+            if len(str(m_nuevo)) == 2:
+                per_nuevo = str(a_nuevo) + '-' + str(m_nuevo)
             else:
-                if len(str(m_nuevo)) == 2:
-                    per_nuevo = str(a_nuevo) + '-' + str(m_nuevo)
-                else:
-                    per_nuevo = str(a_nuevo) + '-0' + str(m_nuevo)
-            try:
-                inf_nueva = float(inf_nueva.replace(',', '.').replace('%', ''))
-            except:
-                st.error('El formato del valor de inflación no es correcto.')
-                st.stop()
-            inflacion_usa.loc[len(inflacion_usa)] = (per_nuevo, inf_nueva)
-            st.dataframe(inflacion_usa, use_container_width=True)
-            k += 1
-            dec_inf = st.selectbox('¿Desea agregar un período más?', options=['No', 'Si'], key=k)
-            if dec_inf.lower() == 'si':
-                agregaInflacion(k=k + 1, p=p)
-            elif dec_inf.lower() == 'no':
-                inflacion_usa.to_excel("Inflacion USA.xlsx", index=False)
-            else:
-                st.stop()
+                per_nuevo = str(a_nuevo) + '-0' + str(m_nuevo)
+        try:
+            inf_nueva = float(inf_nueva.replace(',', '.').replace('%', ''))
+        except:
+            st.error('El formato del valor de inflación no es correcto.')
+            st.stop()
+        inflacion.loc[len(inflacion)] = (per_nuevo, inf_nueva)
+        st.dataframe(inflacion, use_container_width=True)
+        k += 1
+        dec_inf = st.selectbox('¿Desea agregar un período más?', options=['No', 'Si'], key=k)
+        if dec_inf.lower() == 'si':
+            agregaInflacion(k=k + 1)
+        elif dec_inf.lower() == 'no':
+            inflacion.to_excel("Inflación.xlsx", index=False)
+        else:
+            st.stop()
 
 # Conexión a Snowflake
 credentials_snowflake = get_credentials("snow")
@@ -166,38 +121,22 @@ if 'proveedores' not in st.session_state:
     st.subheader("Definición de parámetros")
 
     inflacion = pd.read_excel("Inflación.xlsx")
-    inflacion_usa = pd.read_excel("Inflacion USA.xlsx")
 
     st.markdown("**Inflación de referencia**")
-    col_uy, col_usa = st.columns(2)
-    col_uy.metric("Último período Uruguay", max(inflacion['Mes']))
-    col_usa.metric("Último período USA", max(inflacion_usa['Mes']))
+    st.metric("Último período Uruguay", max(inflacion['Mes']))
 
     dec_inf = st.selectbox('¿Desea agregar un período de inflación?', options=['No', 'Si'], key=1, )
     if dec_inf.lower() == 'si':
-        pais = st.selectbox('¿Para qué país?', options=['Uruguay', 'Estados Unidos'], key=2)
-        if pais.strip().capitalize() == 'Uruguay':
-            agregaInflacion(k=3, p='Uruguay')
-        elif pais.strip() == 'Estados Unidos':
-            agregaInflacion(k=3, p='Estados Unidos')
-        else:
-            st.info('Aún no se eligió una opción correcta.')
-            st.stop()
-    elif dec_inf.lower() == 'no':
-        pass
+        agregaInflacion(k=3)
     else:
-        st.stop()
+        pass
 
     st.markdown("**Pesos de aprobación**")
     col_ap, col_rev = st.columns(2)
-    peso_aprobar = col_ap.number_input(
-        'Peso mínimo para aprobación', min_value=0.0, max_value=1.0,
-        value=0.95, step=0.01, format="%.2f"
-    )
-    peso_revisar = col_rev.number_input(
-        'Peso mínimo para revisión', min_value=0.0, max_value=1.0,
-        value=0.90, step=0.01, format="%.2f"
-    )
+    peso_aprobar = col_ap.number_input('Peso mínimo para aprobación', value=0.95,
+                                       min_value=0.0, max_value=1.0, step=0.01, format="%.2f")
+    peso_revisar = col_rev.number_input('Peso mínimo para revisión', value=0.90,
+                                        min_value=0.0, max_value=1.0, step=0.01, format="%.2f")
     if peso_revisar > peso_aprobar:
         st.error('El peso para aprobación debe ser mayor al peso para revisión.')
         st.stop()
@@ -217,39 +156,43 @@ if 'proveedores' not in st.session_state:
         df = df[df['CONTRATOS_DESDE'].isna()]
 
     inflacion["Mes"] = inflacion["Mes"].apply(lambda x: pd.Period(str(x), freq="M"))
-    inflacion_usa["Mes"] = inflacion_usa["Mes"].apply(lambda x: pd.Period(str(x), freq="M"))
     inflacion["factor"] = 1 + inflacion["Inflacion"] / 100
-    inflacion_usa["factor"] = 1 + inflacion_usa["Inflacion"] / 100
     ultimo_periodo = inflacion["Mes"].max()
 
     inf_12 = round(inflacion_movil(inflacion["Inflacion"], 12) / 100, 4)
     inf_24 = round(inflacion_movil(inflacion["Inflacion"], 24) / 100, 4)
-    inf_12_usa = round(inflacion_movil(inflacion_usa["Inflacion"], 12) / 100, 4)
-    inf_24_usa = round(inflacion_movil(inflacion_usa["Inflacion"], 24) / 100, 4)
+    cursor.execute('''
+SELECT ROUND(DIV0((SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE TIEM_DIA_ID = CURRENT_DATE() AND TIPO_CAMB_MONEDA = 'USD'),
+    (SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE TIEM_DIA_ID = DATEADD('YEAR', -1, CURRENT_DATE()) AND TIPO_CAMB_MONEDA = 'USD')), 4);
+''')
+    cursor.fetch_values
+    inf_12_usa = inf_12 * cursor.fetchall()[0][0]
+    cursor.execute('''
+SELECT ROUND(DIV0((SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE TIEM_DIA_ID = CURRENT_DATE() AND TIPO_CAMB_MONEDA = 'USD'),
+    (SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE TIEM_DIA_ID = DATEADD('YEAR', -2, CURRENT_DATE()) AND TIPO_CAMB_MONEDA = 'USD')), 4);
+    ''')
+    inf_24_usa = inf_24 * cursor.fetchall()[0][0]
 
     df['GEOG_LOCL_COD'] = df['GEOG_LOCL_COD'].fillna(0)
-    control = df[['GEOG_LOCL_COD', 'LISTA', 'ORIN',
-                  'COSTO_NUEVO']].groupby(['GEOG_LOCL_COD', 'LISTA', 'ORIN']).count().reset_index()
+    control = df[['GEOG_LOCL_COD', 'LISTA-SUP', 'ORIN',
+                  'COSTO_NUEVO']].groupby(['GEOG_LOCL_COD', 'LISTA-SUP', 'ORIN']).count().reset_index()
     control.columns = ['GEOG_LOCL_COD', 'LISTA', 'ORIN', 'REGISTROS']
     control = control[control['REGISTROS']>1]
     if len(control) > 0:
         st.write('Los siguientes items tienen multiples costos nuevos asociados en las siguientes listas: ')
-        st.dataframe(control.sort_values('REGISTROS', ascending=False))
-        desc = st.selectbox('Descartarlos?', options=['No', 'Si'])
-        if desc == 'No':
-            st.stop()
-        else:
-            df = df.merge(control, how='left')
-            df = df[df['REGISTROS'].isna()].drop(columns='REGISTROS')
-            st.dataframe(df)
+        st.dataframe(control['LISTA'].unique())
+        st.write('Quitarlas del filtro para continuar.')
+        st.stop()
+
     df['COSTO X INFLACION AM'] = df['COSTO_ACTUAL'] * (1 + inf_12)
     df['COSTO X INFLACION 2AM'] = df['COSTO_ACTUAL'] * (1 + inf_24)
     df['COSTO X INFLACION AM USA'] = df['COSTO_ACTUAL'] * (1 + inf_12_usa)
     df['COSTO X INFLACION 2AM USA'] = df['COSTO_ACTUAL'] * (1 + inf_24_usa)
     df["INFLACION"] = df["ULTIMO_CAMBIO"].apply(calcular_factor_acumulado)
     df["factor_inflacion_usa"] = df["ULTIMO_CAMBIO"].apply(calcular_factor_acumulado_usa)
+    df["INFLACION USA"] = df["INFLACION"] * df["factor_inflacion_usa"]
     df.loc[df[df['MONEDA'] == 'USD'].index, 'INFLACION'] = df.loc[
-        df[df['MONEDA'] == 'USD'].index, 'factor_inflacion_usa']
+        df[df['MONEDA'] == 'USD'].index, 'INFLACION USA']
     df['COSTO X INFLACION'] = df["COSTO_ACTUAL"] * df["INFLACION"]
     df['COSTO X INFLACION'] = df['COSTO X INFLACION'].round(2)
     df['INFLACION'] = df['INFLACION'] - 1

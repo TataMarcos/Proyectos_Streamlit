@@ -6,6 +6,9 @@ from utils import descargar_segmento, carga_snow_generic, get_credentials, snowf
 
 st.set_page_config(page_title="Canastas", page_icon="🧺", layout="wide")
 
+def normDep (d:str):
+    return d.upper().strip().replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+
 st.title("🧺 Actualización de canastas")
 st.divider()
 
@@ -34,20 +37,36 @@ prog = st.selectbox('Seleccione el programa:', ['Referente', 'Mercado + Surtido'
 
 if prog == 'Descarga de canastas':
     c = st.selectbox('Seleccione la canasta:', ['referente', 'mercado', 'surtido', 'excluido', 'marca propia'])
-    with st.spinner('Descargando datos...'):
-        cursor.execute(f'''
-            SELECT LGL.GEOG_LOCL_COD, C.ITEM, LAA.ARTC_ARTC_DESC, C.CANASTA
-            FROM SPIKE.SPIKE.CANASTAS C
-            JOIN MSTRDB.DWH.LU_ARTC_ARTICULO LAA ON C.ITEM::TEXT = LAA.ORIN
-            JOIN MSTRDB.DWH.LU_GEOG_LOCAL LGL ON C.GEOG_LOCL_ID = LGL.GEOG_LOCL_ID
-            WHERE C.CANASTA = \'{c}\';''')
-        desc = cursor.fetch_pandas_all().astype({'ITEM': 'str'})
-    st.metric("Registros encontrados", len(desc))
-    st.dataframe(desc.head(), use_container_width=True)
-    csv = desc.to_csv(index=False)
-    st.download_button(label='⬇️ Descargar tabla', data=csv, file_name='Canastas.csv',
-                       mime='text/csv', use_container_width=False)
-
+    if c != 'referente':
+        with st.spinner('Descargando datos...'):
+            cursor.execute(f'''
+                SELECT LGL.GEOG_LOCL_COD, C.ITEM, LAA.ARTC_ARTC_DESC, C.CANASTA
+                FROM SPIKE.SPIKE.CANASTAS C
+                JOIN MSTRDB.DWH.LU_ARTC_ARTICULO LAA ON C.ITEM::TEXT = LAA.ORIN
+                JOIN MSTRDB.DWH.LU_GEOG_LOCAL LGL ON C.GEOG_LOCL_ID = LGL.GEOG_LOCL_ID
+                WHERE C.CANASTA = \'{c}\';''')
+            desc = cursor.fetch_pandas_all().astype({'ITEM': 'str'})
+        st.metric("Registros encontrados", len(desc))
+        st.dataframe(desc.head(), use_container_width=True)
+        csv = desc.to_csv(index=False)
+        st.download_button(label='⬇️ Descargar tabla', data=csv, file_name='Canastas.csv',
+                        mime='text/csv', use_container_width=False)
+    else:
+        with st.spinner('Descargando datos...'):
+            cursor.execute(f'''
+    SELECT C.ITEM, C.CANASTA, LGD.GEOG_DPTO_DESC, CASE WHEN C.CANASTA = 'referente' THEN 1 ELSE 0 END AS AUX
+    FROM SPIKE.SPIKE.CANASTAS C
+    JOIN MSTRDB.DWH.LU_GEOG_LOCAL LGL ON C.GEOG_LOCL_ID = LGL.GEOG_LOCL_ID
+    JOIN MSTRDB.DWH.LU_GEOG_DEPTO LGD ON LGD.GEOG_DPTO_ID = LGL.GEOG_DPTO_ID;''')
+            desc = cursor.fetch_pandas_all().astype({'ITEM': 'str'}).drop_duplicates().pivot(columns='GEOG_DPTO_DESC', index=['ITEM', 'CANASTA'], values='AUX').reset_index()
+            desc = desc[desc['CANASTA']=='referente'].fillna(0).drop(columns='CANASTA')
+            for c in desc.columns[1:]:
+                desc[c] = desc[c].astype('int8')
+        st.metric("Items encontrados", len(desc))
+        st.dataframe(desc.head(), use_container_width=True)
+        csv = desc.to_csv(index=False)
+        st.download_button(label='⬇️ Descargar tabla', data=csv, file_name='Canastas.csv',
+                                mime='text/csv', use_container_width=False)
 elif prog == 'Referente':
     st.info('Arrastrá el archivo Excel con el formato establecido.')
     uploaded_file = st.file_uploader("Cargar archivo", type="xlsx")
@@ -63,6 +82,7 @@ elif prog == 'Referente':
             value_name='REFERENTE'
         ).rename(columns={'ORIN': 'ITEM'})
         referentes = referentes[referentes['REFERENTE'] == 1].drop(columns='REFERENTE')
+        referentes['GEOG_DPTO_DESC'] = referentes['GEOG_DPTO_DESC'].apply(normDep)
     except:
         st.error('El archivo no tiene el formato correcto.')
         st.stop()
@@ -79,6 +99,7 @@ elif prog == 'Referente':
         referentes['aux'] = 1
         ref['aux'] = 1
         locales.loc[len(locales)] = [53, 'MONTEVIDEO']
+        locales['GEOG_DPTO_DESC'] = locales['GEOG_DPTO_DESC'].apply(normDep)
         locales['aux'] = 1
 
         carga = referentes.merge(locales).drop(columns=['aux', 'GEOG_DPTO_DESC'])

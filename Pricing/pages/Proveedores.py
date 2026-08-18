@@ -117,7 +117,7 @@ meses = {1: "ene", 2: "feb", 3: "mar", 4: "abr", 5: "may", 6: "jun",
          7: "jul", 8: "ago", 9: "sep", 10: "oct", 11: "nov", 12: "dic"}
 
 # Edición y aprobación
-if 'proveedores' not in st.session_state:
+if 'prov_param' not in st.session_state:
     st.subheader("Definición de parámetros")
 
     inflacion = pd.read_excel("Inflación.xlsx")
@@ -140,9 +140,15 @@ if 'proveedores' not in st.session_state:
     if peso_revisar > peso_aprobar:
         st.error('El peso para aprobación debe ser mayor al peso para revisión.')
         st.stop()
-
     st.divider()
 
+    if st.button('Continuar', key=11):
+        st.session_state.prov_param = [pd.read_excel("Inflación.xlsx"), peso_aprobar, peso_revisar]
+        st.rerun()
+
+if 'prov_param' in st.session_state and 'prov_filtros' not in st.session_state:
+    inflacion = st.session_state.prov_param[0]
+    peso_aprobar, peso_revisar = st.session_state.prov_param[1], st.session_state.prov_param[2]
     st.subheader("Filtros")
 
     prov['LISTA-SUP'] = prov['LISTA'].astype('str') + ' - ' + prov['SUP_NAME']
@@ -227,7 +233,14 @@ SELECT ROUND(DIV0((SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE
     dis.remove('MENSAJE')
 
     st.divider()
+    if st.button('Continuar', key=12):
+        st.session_state.prov_filtros = [df, dis]
+        st.rerun()
+
+if 'prov_filtros' in st.session_state and 'proveedores' not in st.session_state:
     st.subheader("Revisión por lista")
+    df = st.session_state.prov_filtros[0]
+    dis = st.session_state.prov_filtros[1]
     proveedores = st.data_editor(
         df, use_container_width=True,
         disabled=dis + ['SUGERENCIA'],
@@ -241,12 +254,12 @@ SELECT ROUND(DIV0((SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE
         counts = aux['LISTA'].value_counts()
         listas_validas = counts[counts == 1].index
         aux = aux[aux['LISTA'].isin(listas_validas)]
-        nuevo_df = prov.drop(columns=['ESTADO', 'MENSAJE']).merge(aux, how='left').merge(mens, how='left')
-        if 'prov' not in st.session_state or not nuevo_df.equals(st.session_state.prov):
-            st.session_state.prov = nuevo_df
+        nuevo_df = df.drop(columns=['ESTADO', 'MENSAJE']).merge(aux, how='left').merge(mens, how='left')
+        if 'prov_filtros' not in st.session_state or not nuevo_df.equals(st.session_state.prov_filtros[0]):
+            st.session_state.prov_filtros = [nuevo_df, dis]
             st.rerun()
 
-    cont = st.button('Preparar documentos', use_container_width=False)
+    cont = st.button('Preparar documentos', use_container_width=False, key=13)
     if cont:
         st.session_state.proveedores = proveedores.drop(columns='SUGERENCIA')
         st.rerun()
@@ -264,7 +277,7 @@ if 'proveedores' in st.session_state:
             'CONTRATOS_VENCIMIENTO', 'PVP_ACTUAL', 'MG_ACTUAL', 'PVP_SUGERIDO', 'MG', 'PVP_MARGEN_OBJETIVO',
             'ESTA_EN_PROMO', 'PROM_FECHA_INICIO', 'PROM_FECHA_FIN', 'ESTADO', 'MENSAJE']
     if 'carga_prov' not in st.session_state:
-        carga = proveedores[proveedores['ESTADO'].isin(['APROBADA', 'RECHAZADA'])][cols].fillna({'GEOG_LOCL_COD':0})
+        carga = proveedores[proveedores['ESTADO'].isin(['APROBADA', 'RECHAZADA'])][cols]
         carga['FECHA_IMPACTO'] = dt
 
         with st.spinner('Subiendo datos a Snowflake...'):
@@ -291,111 +304,112 @@ WHEN MATCHED THEN
 
         st.success("Datos actualizados en Snowflake.")
         st.session_state.carga_prov = True
+        time.sleep(3)
+        st.rerun()
+    else:
+        it = proveedores[(proveedores['GEOG_LOCL_COD'].isna()) & (proveedores['ESTADO'] == 'APROBADA')]
+        loc = proveedores[(~proveedores['GEOG_LOCL_COD'].isna()) & (proveedores['ESTADO'] == 'APROBADA')]
 
-    it = proveedores[(proveedores['GEOG_LOCL_COD'].isna()) & (proveedores['ESTADO'] == 'APROBADA')]
-    loc = proveedores[(~proveedores['GEOG_LOCL_COD'].isna()) & (proveedores['ESTADO'] == 'APROBADA')]
+        # Archivo 1: ITEM
+        cc = it[['SUPPLIER', 'LISTA']].drop_duplicates()
+        cc['Acción'] = 'Crear'
+        cc['Cambio de costo'] = 324235334
+        cc['Descripción de cambio de costo'] = 'Costo proveedor ' + cc['SUPPLIER'].astype(str) + '. Lista ' + cc['LISTA'].astype(str)
+        cc['Motivo'] = 5
+        cc['Fecha activa'] = str(date.today().day) + '-' + meses[date.today().month] + '-' + str(date.today().year)[-2:]
+        cc['Estado'] = 'Hoja de trabajo'
+        cc['Origen de cambio de costo'] = 'Por artículo'
+        camb_costo = cc[['Acción', 'Cambio de costo', 'Descripción de cambio de costo', 'Motivo',
+                        'Fecha activa', 'Estado', 'Origen de cambio de costo']].reset_index(drop=True)
 
-    # Archivo 1: ITEM
-    cc = it[['SUPPLIER', 'LISTA']].drop_duplicates()
-    cc['Acción'] = 'Crear'
-    cc['Cambio de costo'] = 324235334
-    cc['Descripción de cambio de costo'] = 'Costo proveedor ' + cc['SUPPLIER'].astype(str) + '. Lista ' + cc['LISTA'].astype(str)
-    cc['Motivo'] = 5
-    cc['Fecha activa'] = str(date.today().day) + '-' + meses[date.today().month] + '-' + str(date.today().year)[-2:]
-    cc['Estado'] = 'Hoja de trabajo'
-    cc['Origen de cambio de costo'] = 'Por artículo'
-    camb_costo = cc[['Acción', 'Cambio de costo', 'Descripción de cambio de costo', 'Motivo',
-                     'Fecha activa', 'Estado', 'Origen de cambio de costo']].reset_index(drop=True)
+        cc = it[['SUPPLIER', 'LISTA', 'ORIN', 'COSTO_NUEVO']].drop_duplicates()
+        cc['Acción'] = 'Crear'
+        cc['Cambio de costo'] = 324235334
+        cc['ID de país de origen'] = 'UY'
+        cc['Tipo de cambio de costo'] = 'Costo fijo'
+        cc['Recálculo de órdenes'] = 'Costo fijo'
+        cc['ID de país de entrega'] = pd.NA
+        camb_costo_art = cc[['Acción', 'Cambio de costo', 'SUPPLIER', 'ID de país de origen', 'ORIN',
+                            'Tipo de cambio de costo', 'COSTO_NUEVO', 'Recálculo de órdenes',
+                            'ID de país de entrega']].reset_index(drop=True)
+        camb_costo_art.columns = ['Acción', 'Cambio de costo', 'Proveedor', 'ID de país de origen',
+                                'Artículo', 'Tipo de cambio de costo', 'Valor de cambio de costo',
+                                'Recálculo de órdenes', 'ID de país de entrega']
 
-    cc = it[['SUPPLIER', 'LISTA', 'ORIN', 'COSTO_NUEVO']].drop_duplicates()
-    cc['Acción'] = 'Crear'
-    cc['Cambio de costo'] = 324235334
-    cc['ID de país de origen'] = 'UY'
-    cc['Tipo de cambio de costo'] = 'Costo fijo'
-    cc['Recálculo de órdenes'] = 'Costo fijo'
-    cc['ID de país de entrega'] = pd.NA
-    camb_costo_art = cc[['Acción', 'Cambio de costo', 'SUPPLIER', 'ID de país de origen', 'ORIN',
-                         'Tipo de cambio de costo', 'COSTO_NUEVO', 'Recálculo de órdenes',
-                         'ID de país de entrega']].reset_index(drop=True)
-    camb_costo_art.columns = ['Acción', 'Cambio de costo', 'Proveedor', 'ID de país de origen',
-                              'Artículo', 'Tipo de cambio de costo', 'Valor de cambio de costo',
-                              'Recálculo de órdenes', 'ID de país de entrega']
+        camb_costo_ubi = pd.DataFrame({col: [pd.NA] for col in [
+            'Acción', 'Cambio de costo', 'Proveedor', 'ID de país de origen', 'Artículo',
+            'Tipo de ubicación', 'Ubicación', 'Tipo de cambio de costo',
+            'Valor de cambio de costo', 'Recálculo de órdenes', 'ID de país de entrega'
+        ]})
 
-    camb_costo_ubi = pd.DataFrame({col: [pd.NA] for col in [
-        'Acción', 'Cambio de costo', 'Proveedor', 'ID de país de origen', 'Artículo',
-        'Tipo de ubicación', 'Ubicación', 'Tipo de cambio de costo',
-        'Valor de cambio de costo', 'Recálculo de órdenes', 'ID de país de entrega'
-    ]})
+        cc_pago = pd.DataFrame({'Cambio de Costo': [pd.NA], 'Condiciones de Pago': [pd.NA]})
 
-    cc_pago = pd.DataFrame({'Cambio de Costo': [pd.NA], 'Condiciones de Pago': [pd.NA]})
+        output1 = BytesIO()
+        with pd.ExcelWriter(output1, engine="odf") as writer:
+            camb_costo.to_excel(writer, sheet_name="Cambios_de_costo", index=False)
+            camb_costo_art.to_excel(writer, sheet_name="Artículos_de_cambio_de_costo", index=False)
+            camb_costo_ubi.to_excel(writer, sheet_name="Ubicaciones_de_cambio_de_costo", index=False)
+            cc_pago.to_excel(writer, sheet_name="Cond_Pago_de_Cambios_Costo", index=False)
+        output1.seek(0)
 
-    output1 = BytesIO()
-    with pd.ExcelWriter(output1, engine="odf") as writer:
-        camb_costo.to_excel(writer, sheet_name="Cambios_de_costo", index=False)
-        camb_costo_art.to_excel(writer, sheet_name="Artículos_de_cambio_de_costo", index=False)
-        camb_costo_ubi.to_excel(writer, sheet_name="Ubicaciones_de_cambio_de_costo", index=False)
-        cc_pago.to_excel(writer, sheet_name="Cond_Pago_de_Cambios_Costo", index=False)
-    output1.seek(0)
+        # Archivo 2: ITEM-LOCAL
+        cc = loc[['SUPPLIER', 'LISTA']].drop_duplicates()
+        cc['Acción'] = 'Crear'
+        cc['Cambio de costo'] = 324235334
+        cc['Descripción de cambio de costo'] = 'Costo proveedor ' + cc['SUPPLIER'].astype(str) + '. Lista ' + cc['LISTA'].astype(str)
+        cc['Motivo'] = 5
+        cc['Fecha activa'] = str(date.today().day) + '-' + meses[date.today().month] + '-' + str(date.today().year)[-2:]
+        cc['Estado'] = 'Hoja de trabajo'
+        cc['Origen de cambio de costo'] = 'Por artículo'
+        camb_costo2 = cc[['Acción', 'Cambio de costo', 'Descripción de cambio de costo', 'Motivo',
+                        'Fecha activa', 'Estado', 'Origen de cambio de costo']].reset_index(drop=True)
 
-    # Archivo 2: ITEM-LOCAL
-    cc = loc[['SUPPLIER', 'LISTA']].drop_duplicates()
-    cc['Acción'] = 'Crear'
-    cc['Cambio de costo'] = 324235334
-    cc['Descripción de cambio de costo'] = 'Costo proveedor ' + cc['SUPPLIER'].astype(str) + '. Lista ' + cc['LISTA'].astype(str)
-    cc['Motivo'] = 5
-    cc['Fecha activa'] = str(date.today().day) + '-' + meses[date.today().month] + '-' + str(date.today().year)[-2:]
-    cc['Estado'] = 'Hoja de trabajo'
-    cc['Origen de cambio de costo'] = 'Por artículo'
-    camb_costo2 = cc[['Acción', 'Cambio de costo', 'Descripción de cambio de costo', 'Motivo',
-                      'Fecha activa', 'Estado', 'Origen de cambio de costo']].reset_index(drop=True)
+        camb_costo_art2 = pd.DataFrame({col: [pd.NA] for col in [
+            'Acción', 'Cambio de costo', 'Proveedor', 'ID de país de origen', 'Artículo',
+            'Tipo de cambio de costo', 'Valor de cambio de costo', 'Recálculo de órdenes', 'ID de país de entrega'
+        ]})
 
-    camb_costo_art2 = pd.DataFrame({col: [pd.NA] for col in [
-        'Acción', 'Cambio de costo', 'Proveedor', 'ID de país de origen', 'Artículo',
-        'Tipo de cambio de costo', 'Valor de cambio de costo', 'Recálculo de órdenes', 'ID de país de entrega'
-    ]})
+        cc = loc[['SUPPLIER', 'LISTA', 'GEOG_LOCL_COD', 'ORIN', 'COSTO_NUEVO']].drop_duplicates()
+        cc['Acción'] = 'Crear'
+        cc['Cambio de costo'] = 324235334
+        cc['ID de país de origen'] = 'UY'
+        cc['Tipo de ubicación'] = 'Tienda'
+        cc['Tipo de cambio de costo'] = 'Costo fijo'
+        cc['Recálculo de órdenes'] = 'Costo fijo'
+        cc['ID de país de entrega'] = pd.NA
+        camb_costo_ubi2 = cc[['Acción', 'Cambio de costo', 'SUPPLIER', 'ID de país de origen', 'ORIN',
+                            'Tipo de ubicación', 'GEOG_LOCL_COD', 'Tipo de cambio de costo', 'COSTO_NUEVO',
+                            'Recálculo de órdenes', 'ID de país de entrega']].reset_index(drop=True)
+        camb_costo_ubi2.columns = ['Acción', 'Cambio de costo', 'Proveedor', 'ID de país de origen',
+                                'Artículo', 'Tipo de ubicación', 'Ubicación', 'Tipo de cambio de costo',
+                                'Valor de cambio de costo', 'Recálculo de órdenes', 'ID de país de entrega']
 
-    cc = loc[['SUPPLIER', 'LISTA', 'GEOG_LOCL_COD', 'ORIN', 'COSTO_NUEVO']].drop_duplicates()
-    cc['Acción'] = 'Crear'
-    cc['Cambio de costo'] = 324235334
-    cc['ID de país de origen'] = 'UY'
-    cc['Tipo de ubicación'] = 'Tienda'
-    cc['Tipo de cambio de costo'] = 'Costo fijo'
-    cc['Recálculo de órdenes'] = 'Costo fijo'
-    cc['ID de país de entrega'] = pd.NA
-    camb_costo_ubi2 = cc[['Acción', 'Cambio de costo', 'SUPPLIER', 'ID de país de origen', 'ORIN',
-                          'Tipo de ubicación', 'GEOG_LOCL_COD', 'Tipo de cambio de costo', 'COSTO_NUEVO',
-                          'Recálculo de órdenes', 'ID de país de entrega']].reset_index(drop=True)
-    camb_costo_ubi2.columns = ['Acción', 'Cambio de costo', 'Proveedor', 'ID de país de origen',
-                               'Artículo', 'Tipo de ubicación', 'Ubicación', 'Tipo de cambio de costo',
-                               'Valor de cambio de costo', 'Recálculo de órdenes', 'ID de país de entrega']
+        cc_pago2 = pd.DataFrame({'Cambio de Costo': [pd.NA], 'Condiciones de Pago': [pd.NA]})
 
-    cc_pago2 = pd.DataFrame({'Cambio de Costo': [pd.NA], 'Condiciones de Pago': [pd.NA]})
+        output2 = BytesIO()
+        with pd.ExcelWriter(output2, engine="odf") as writer:
+            camb_costo2.to_excel(writer, sheet_name="Cambios_de_costo", index=False)
+            camb_costo_art2.to_excel(writer, sheet_name="Artículos_de_cambio_de_costo", index=False)
+            camb_costo_ubi2.to_excel(writer, sheet_name="Ubicaciones_de_cambio_de_costo", index=False)
+            cc_pago2.to_excel(writer, sheet_name="Cond_Pago_de_Cambios_Costo", index=False)
+        output2.seek(0)
 
-    output2 = BytesIO()
-    with pd.ExcelWriter(output2, engine="odf") as writer:
-        camb_costo2.to_excel(writer, sheet_name="Cambios_de_costo", index=False)
-        camb_costo_art2.to_excel(writer, sheet_name="Artículos_de_cambio_de_costo", index=False)
-        camb_costo_ubi2.to_excel(writer, sheet_name="Ubicaciones_de_cambio_de_costo", index=False)
-        cc_pago2.to_excel(writer, sheet_name="Cond_Pago_de_Cambios_Costo", index=False)
-    output2.seek(0)
+        if it['LISTA'].unique().size > 0:
+            st.download_button(
+                label=f"⬇️ Descargar archivo Listas {', '.join(it['LISTA'].astype('str').unique())}.ods",
+                data=output1,
+                file_name=f"Listas {', '.join(loc['LISTA'].astype('str').unique())}.ods",
+                mime="application/vnd.oasis.opendocument.spreadsheet",
+                use_container_width=True
+            )
+        if loc['LISTA'].unique().size > 0:
+            st.download_button(
+                label=f"⬇️ Descargar archivo Listas {', '.join(loc['LISTA'].astype('str').unique())}.ods",
+                data=output2,
+                file_name=f"Listas {', '.join(loc['LISTA'].astype('str').unique())}.ods",
+                mime="application/vnd.oasis.opendocument.spreadsheet",
+                use_container_width=True
+            )
 
-    col_dl1, col_dl2 = st.columns(2)
-    with col_dl1:
-        st.download_button(
-            label="⬇️ Descargar archivo Item.ods",
-            data=output1,
-            file_name="Item.ods",
-            mime="application/vnd.oasis.opendocument.spreadsheet",
-            use_container_width=True
-        )
-    with col_dl2:
-        st.download_button(
-            label="⬇️ Descargar archivo Item-loc.ods",
-            data=output2,
-            file_name="Item-loc.ods",
-            mime="application/vnd.oasis.opendocument.spreadsheet",
-            use_container_width=True
-        )
-
-    st.divider()
-    st.success("Proceso completado.")
+        st.divider()
+        st.success("Proceso completado.")

@@ -208,6 +208,8 @@ SELECT ROUND(DIV0((SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE
     df['INFLACION 2AM'] = inf_24
     df.loc[df[df['MONEDA'] == 'USD'].index, 'INFLACION 2AM'] = inf_24_usa
     df['DIF INCREMENTO 2AM'] = df['INCREMENTO'] - df['INFLACION 2AM']
+    df['PVP MARGEN SOSTENIDO'] = df['COSTO_NUEVO'] * (1 + df['MG_ACTUAL']) * (1 + df['IVA'])
+    df['MARGEN SUGERIDO'] = df['PVP_SUGERIDO']/df['COSTO_NUEVO']
 
     # Reglas de aprobación
     ap = (df[df['COSTO X INFLACION'] >= df['COSTO_NUEVO']][['LISTA',
@@ -220,12 +222,13 @@ SELECT ROUND(DIV0((SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE
     df.loc[df[(df['PESO_APROB'] >= peso_revisar) & (df['PESO_APROB'] < peso_aprobar)].index, 'SUGERENCIA'] = 'Revisar'
 
     df['GEOG_LOCL_COD'] = df['GEOG_LOCL_COD'].replace(0, pd.NA)
-    df = df[['FECHA_SOLICITUD', 'GEOG_LOCL_COD', 'SUPPLIER', 'SUP_NAME', 'LISTA', 'GRUPO', 'DEPT', 'CLASS',
-             'SUBCLASS', 'FAMILIA', 'INTEGRANTES', 'HERMANO', 'ORIN', 'ARTC_ARTC_DESC', 'VENTA_TOTAL_LISTA',
-             'PESO_VENTA', 'IVA', 'COSTO_ACTUAL', 'MONEDA', 'COSTO_NUEVO', 'ULTIMO_CAMBIO', 'CANT_CAMBIOS_UA',
-             'CANT_CAMBIOS_U2A', 'INCREMENTO', 'INFLACION', 'COSTO X INFLACION', 'DIF INCREMENTO',
-             'DIF INCREMENTO AM', 'DIF INCREMENTO 2AM', 'CONTRATOS_DESDE', 'CONTRATOS_HASTA',
-             'CONTRATOS_VENCIMIENTO', 'PVP_ACTUAL', 'MG_ACTUAL', 'PVP_SUGERIDO', 'MG', 'PVP_MARGEN_OBJETIVO',
+    df = df[['FECHA_SOLICITUD', 'GEOG_LOCL_COD', 'SUPPLIER', 'SUP_NAME', 'LISTA', 'GRUPO', 'DEPT',
+             'CLASS', 'SUBCLASS', 'FAMILIA', 'INTEGRANTES', 'HERMANO', 'ORIN', 'ARTC_ARTC_DESC',
+             'VENTA_TOTAL_LISTA', 'PESO_VENTA', 'IVA', 'COSTO_ACTUAL', 'MONEDA', 'COSTO_NUEVO',
+             'ULTIMO_CAMBIO', 'CANT_CAMBIOS_UA', 'CANT_CAMBIOS_U2A', 'INCREMENTO', 'INFLACION',
+             'COSTO X INFLACION', 'DIF INCREMENTO', 'DIF INCREMENTO AM', 'DIF INCREMENTO 2AM',
+             'CONTRATOS_DESDE', 'CONTRATOS_HASTA', 'CONTRATOS_VENCIMIENTO', 'PVP_ACTUAL', 'MG_ACTUAL',
+             'PVP MARGEN SOSTENIDO', 'PVP_SUGERIDO', 'MARGEN SUGERIDO', 'PVP_MARGEN_OBJETIVO', 'MG',
              'ESTA_EN_PROMO', 'PROM_FECHA_INICIO', 'PROM_FECHA_FIN', 'SUGERENCIA', 'ESTADO', 'MENSAJE']]
     
     dis = list(df.columns)
@@ -245,8 +248,25 @@ if 'prov_filtros' in st.session_state and 'proveedores' not in st.session_state:
         df, use_container_width=True,
         disabled=dis + ['SUGERENCIA'],
         key="editor_proveedores",
-        column_config={"ESTADO": st.column_config.SelectboxColumn("Estado", options=opc, required=True)}
-    )
+        column_config={"ESTADO": st.column_config.SelectboxColumn("Estado", options=opc, required=True),
+                       "INCREMENTO":st.column_config.NumberColumn('Incremento', format='percent'),
+                       "INFLACION":st.column_config.NumberColumn('Inflacion', format='percent'),
+                       "VENTA_TOTAL_LISTA":st.column_config.NumberColumn('Venta Total Lista', format='$ %.2f'),
+                       "PESO_VENTA":st.column_config.NumberColumn('Peso Venta', format='percent'),
+                       "IVA":st.column_config.NumberColumn('IVA', format='percent'),
+                       "COSTO_ACTUAL":st.column_config.NumberColumn('Costo Actual', format='$ %.2f'),
+                       "COSTO_NUEVO":st.column_config.NumberColumn('Costo Nuevo', format='$ %.2f'),
+                       "COSTO X INFLACION":st.column_config.NumberColumn('Costo x Inflacion', format='$ %.2f'),
+                       "DIF INCREMENTO":st.column_config.NumberColumn('Dif Incremento', format='percent'),
+                       "DIF INCREMENTO AM":st.column_config.NumberColumn('Dif Incremento AM', format='percent'),
+                       "DIF INCREMENTO 2AM":st.column_config.NumberColumn('Dif Incremento 2AM', format='percent'),
+                       "PVP_ACTUAL":st.column_config.NumberColumn('PVP Actual', format='$ %.2f'),
+                       "MG_ACTUAL":st.column_config.NumberColumn('Margen Actual', format='percent'),
+                       "PVP_SUGERIDO":st.column_config.NumberColumn('PVP Sugerido', format='$ %.2f'),
+                       "MG":st.column_config.NumberColumn('Margen Objetivo', format='percent'),
+                       "PVP_MARGEN_OBJETIVO":st.column_config.NumberColumn('PVP Margen Objetivo', format='$ %.2f'),
+                       "PVP MARGEN SOSTENIDO":st.column_config.NumberColumn('PVP Margen Sostenido', format='$ %.2f'),
+                       "MARGEN SUGERIDO":st.column_config.NumberColumn('Margen Sugerido', format='percent')})
 
     aux = proveedores[['LISTA', 'ESTADO']].dropna().drop_duplicates()
     mens = proveedores[['ORIN', 'LISTA', 'MENSAJE']].dropna().drop_duplicates()
@@ -281,6 +301,7 @@ if 'proveedores' in st.session_state:
         carga['FECHA_IMPACTO'] = dt
 
         with st.spinner('Subiendo datos a Snowflake...'):
+            cursor.execute('DELETE FROM SANDBOX_PLUS.DWH.INPUT_PROVEEDORES_ITEM;')
             success = carga_snow_generic(df=carga[carga['GEOG_LOCL_COD'].isna()], ctx=snow,
                                         database='SANDBOX_PLUS', schema='DWH', table='INPUT_PROVEEDORES_ITEM')
             cursor.execute('''
@@ -291,6 +312,7 @@ ON
 WHEN MATCHED THEN
     UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_IMPACTO = SOURCE.FECHA_IMPACTO, TARGET.MENSAJE = SOURCE.MENSAJE;
 ''')
+            cursor.execute('DELETE FROM SANDBOX_PLUS.DWH.INPUT_PROVEEDORES_ITEM_LOC;')
             success = carga_snow_generic(df=carga[~carga['GEOG_LOCL_COD'].isna()], ctx=snow,
                                         database='SANDBOX_PLUS', schema='DWH', table='INPUT_PROVEEDORES_ITEM_LOC')
             cursor.execute('''
@@ -301,7 +323,6 @@ ON
 WHEN MATCHED THEN
     UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_IMPACTO = SOURCE.FECHA_IMPACTO, TARGET.MENSAJE = SOURCE.MENSAJE;
 ''')
-
         st.success("Datos actualizados en Snowflake.")
         st.session_state.carga_prov = True
         time.sleep(3)

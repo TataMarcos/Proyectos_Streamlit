@@ -209,7 +209,7 @@ SELECT ROUND(DIV0((SELECT TIPO_CAMB_IMPORTE FROM MSTRDB.DWH.LU_TIPO_CAMBIO WHERE
     df.loc[df[df['MONEDA'] == 'USD'].index, 'INFLACION 2AM'] = inf_24_usa
     df['DIF INCREMENTO 2AM'] = df['INCREMENTO'] - df['INFLACION 2AM']
     df['PVP MARGEN SOSTENIDO'] = df['COSTO_NUEVO'] * (1 + df['MG_ACTUAL']) * (1 + df['IVA'])
-    df['MARGEN SUGERIDO'] = df['PVP_SUGERIDO']/df['COSTO_NUEVO']
+    df['MARGEN SUGERIDO'] = (df['PVP_SUGERIDO'] - df['COSTO_NUEVO'])/df['COSTO_NUEVO']
 
     # Reglas de aprobación
     ap = (df[df['COSTO X INFLACION'] >= df['COSTO_NUEVO']][['LISTA',

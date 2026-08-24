@@ -8,7 +8,6 @@ from io import BytesIO
 st.set_page_config(page_title="Proveedores", page_icon="🏭", layout="wide")
 
 st.title("🏭 Carga de costos de proveedores")
-st.divider()
 
 def inflacion_movil(series, ventana):
     tasas = series.iloc[-ventana:]
@@ -105,6 +104,7 @@ except:
 
 # Selección de programas
 prog = st.selectbox('Selección de programas', options=['Análisis de Listas', 'Resumen de Listas'], key=101)
+st.divider()
 
 if prog == 'Análisis de Listas':
     # Carga de datos
@@ -213,7 +213,8 @@ if prog == 'Análisis de Listas':
         df.loc[df[df['MONEDA'] == 'USD'].index, 'INFLACION 2AM'] = inf_24_usa
         df['DIF INCREMENTO 2AM'] = df['INCREMENTO'] - df['INFLACION 2AM']
         df['PVP MARGEN SOSTENIDO'] = (df['COSTO_NUEVO'] / (1 - df['MG_ACTUAL'])) * (1 + df['IVA'])
-        df['MARGEN SUGERIDO'] = (df['PVP_SUGERIDO'] - (df['COSTO_NUEVO'] * df['IVA']))/df['PVP_SUGERIDO']
+        df['MARGEN SUGERIDO'] = (df['PVP_SUGERIDO'] - (df['COSTO_NUEVO'] * (1 + df['IVA'])))/df['PVP_SUGERIDO']
+        df['Variacion Tipo de Cambio'] = df["factor_inflacion_usa"] - 1
 
         # Reglas de aprobación
         ap = (df[df['COSTO X INFLACION'] >= df['COSTO_NUEVO']][['LISTA',
@@ -229,7 +230,7 @@ if prog == 'Análisis de Listas':
         df = df[['FECHA_SOLICITUD', 'GEOG_LOCL_COD', 'SUPPLIER', 'SUP_NAME', 'LISTA', 'GRUPO', 'DEPT', 'CLASS',
                 'SUBCLASS', 'FAMILIA', 'INTEGRANTES', 'HERMANO', 'ORIN', 'ARTC_ARTC_DESC', 'VENTA_TOTAL_LISTA',
                 'PESO_VENTA', 'IVA', 'COSTO_ACTUAL', 'MONEDA', 'COSTO_NUEVO', 'ULTIMO_CAMBIO',
-                'CANT_CAMBIOS_UA', 'CANT_CAMBIOS_U2A', 'INCREMENTO', 'INFLACION', 'factor_inflacion_usa',
+                'CANT_CAMBIOS_UA', 'CANT_CAMBIOS_U2A', 'INCREMENTO', 'INFLACION', 'Variacion Tipo de Cambio',
                 'COSTO X INFLACION', 'DIF INCREMENTO', 'DIF INCREMENTO AM', 'DIF INCREMENTO 2AM',
                 'CONTRATOS_DESDE', 'CONTRATOS_HASTA', 'CONTRATOS_VENCIMIENTO', 'PVP_ACTUAL', 'MG_ACTUAL',
                 'PVP MARGEN SOSTENIDO', 'PVP_SUGERIDO', 'MARGEN SUGERIDO', 'PVP_MARGEN_OBJETIVO', 'MG',
@@ -248,6 +249,34 @@ if prog == 'Análisis de Listas':
         st.subheader("Revisión por lista")
         df = st.session_state.prov_filtros[0]
         dis = st.session_state.prov_filtros[1]
+        df_desc = df.drop(columns=['SUGERENCIA', 'ESTADO', 'MENSAJE'])
+        df_desc['VENTA_TOTAL_LISTA'] = df_desc['VENTA_TOTAL_LISTA'].astype('int64')
+        df_desc['PVP_ACTUAL'] = df_desc['PVP_ACTUAL'].astype('int64')
+        df_desc['PVP MARGEN SOSTENIDO'] = df_desc['PVP MARGEN SOSTENIDO'].astype('int64')
+        df_desc['PVP_SUGERIDO'] = df_desc['PVP_SUGERIDO'].astype('int64')
+        df_desc['PVP_MARGEN_OBJETIVO'] = df_desc['PVP_MARGEN_OBJETIVO'].round()
+        df_desc['PESO_VENTA'] = df_desc['PESO_VENTA'].round(4)
+        df_desc['IVA'] = df_desc['IVA'].round(4)
+        df_desc['INCREMENTO'] = df_desc['INCREMENTO'].round(4)
+        df_desc['INFLACION'] = df_desc['INFLACION'].round(4)
+        df_desc['Variacion Tipo de Cambio'] = df_desc['Variacion Tipo de Cambio'].round(4)
+        df_desc['COSTO X INFLACION'] = df_desc['COSTO X INFLACION'].round(4)
+        df_desc['MG_ACTUAL'] = df_desc['MG_ACTUAL'].round(4)
+        df_desc['DIF INCREMENTO'] = df_desc['DIF INCREMENTO'].round(4)
+        df_desc['DIF INCREMENTO AM'] = df_desc['DIF INCREMENTO AM'].round(4)
+        df_desc['DIF INCREMENTO 2AM'] = df_desc['DIF INCREMENTO 2AM'].round(4)
+        df_desc['MARGEN SUGERIDO'] = df_desc['MARGEN SUGERIDO'].round(4)
+        
+        df_desc.columns = ['Fecha Solicitud', 'Geog Locl Cod', 'Supplier', 'Sup Name', 'Lista', 'Grupo',
+                           'Dept', 'Class', 'Subclass', 'Familia', 'Integrantes', 'Hermano', 'Orin',
+                           'Artc Artc Desc', 'Venta Total Lista', 'Peso Venta', 'Iva', 'Costo Actual',
+                           'Moneda', 'Costo Nuevo', 'Ultimo Cambio', 'Cant Cambios UA', 'Cant Cambios U2A',
+                           'Incremento', 'Inflacion', 'Variacion Tipo de Cambio', 'Costo X Inflacion',
+                           'Dif Incremento', 'Dif Incremento AM', 'Dif Incremento 2AM', 'Contratos Desde',
+                           'Contratos Hasta', 'Contratos Vencimiento', 'Pvp Actual', 'Margen Actual',
+                           'Pvp Margen Sostenido', 'Pvp Sugerido', 'Margen Sugerido', 'Pvp Margen Objetivo',
+                           'Margen Objetivo', 'Esta En Promo', 'Prom Fecha Inicio', 'Prom Fecha Fin']
+        
         proveedores = st.data_editor(
             df, use_container_width=True,
             disabled=dis + ['SUGERENCIA'],
@@ -255,7 +284,7 @@ if prog == 'Análisis de Listas':
             column_config={"ESTADO": st.column_config.SelectboxColumn("Estado", options=opc, required=True),
                         "INCREMENTO":st.column_config.NumberColumn('Incremento', format='percent'),
                         "INFLACION":st.column_config.NumberColumn('Inflacion', format='percent'),
-                        "factor_inflacion_usa":st.column_config.NumberColumn('Variacion Tipo de Cambio', format='percent'),
+                        "Variacion Tipo de Cambio":st.column_config.NumberColumn('Variacion Tipo de Cambio', format='percent'),
                         "VENTA_TOTAL_LISTA":st.column_config.NumberColumn('Venta Total Lista', format='$ %.0f'),
                         "PESO_VENTA":st.column_config.NumberColumn('Peso Venta', format='percent'),
                         "IVA":st.column_config.NumberColumn('IVA', format='percent'),
@@ -273,6 +302,11 @@ if prog == 'Análisis de Listas':
                         "PVP MARGEN SOSTENIDO":st.column_config.NumberColumn('PVP Margen Sostenido', format='$ %.0f'),
                         "MARGEN SUGERIDO":st.column_config.NumberColumn('Margen Sugerido', format='percent')})
 
+        csv = df_desc.to_csv(index=False, sep=';')
+        st.download_button(label="⬇️ Descargar Tabla", data=csv,
+                           file_name='Analisis Costos de Proveedores.csv',
+                           mime='text/csv', use_container_width=True)
+        
         aux = proveedores[['LISTA', 'ESTADO']].dropna().drop_duplicates()
         mens = proveedores[['ORIN', 'LISTA', 'MENSAJE']].dropna().drop_duplicates()
         if len(aux) > 0:
@@ -454,12 +488,26 @@ else:
     resumen["INFLACION"] = resumen["ULTIMO_CAMBIO"].apply(calcular_factor_acumulado)
     resumen['INFLACION'] = resumen['INFLACION'] - 1
     resumen['MARGEN SUGERIDO'] = (resumen['PVP_SUGERIDO'] -
-                                  (resumen['COSTO_NUEVO'] * resumen['IVA']))/resumen['PVP_SUGERIDO']
+                                  (resumen['COSTO_NUEVO'] * (1 + resumen['IVA'])))/resumen['PVP_SUGERIDO']
+    resumen['GERENCIA'] = 'PGC'
+    resumen.loc[resumen[resumen['GRUPO'].isin(['PERFUMERIA', 'LIMPIEZA DEL HOGAR'])].index,
+                'GERENCIA'] = 'PYL'
+    resumen.loc[resumen[resumen['GRUPO'].isin(['CARNES', 'FRUVER', 'LACTEOS', 'ELABORACION DE ALIMENTOS', 'FIAMBRERIA', 'CONGELADOS'])].index,
+                        'GERENCIA'] = 'FRESCOS'
+    resumen.loc[resumen[resumen['GRUPO'].isin(['HOGAR', 'TEXTIL', 'JUGUETERIA', 'ELECTRO', 'NAVIDAD', 'LIBRERIA', 'PROMOCIONES'])].index,
+                        'GERENCIA'] = 'NON FOOD'
+    tot = resumen[['GERENCIA', 'LISTA']].drop_duplicates().groupby('GERENCIA').count().reset_index()
+    tot.columns = ['GERENCIA', 'LISTAS TOTALES']
+    ap = resumen[resumen['ESTADO']=='APROBADA'][['GERENCIA', 'LISTA']].drop_duplicates().groupby('GERENCIA').count().reset_index()
+    ap.columns = ['GERENCIA', 'LISTAS APROBADAS']
+    rec = resumen[resumen['ESTADO']=='RECHAZADA'][['GERENCIA', 'LISTA']].drop_duplicates().groupby('GERENCIA').count().reset_index()
+    rec.columns = ['GERENCIA', 'LISTAS RECHAZADAS']
+    cont = tot.merge(ap, how='left').merge(rec, how='left').fillna(0)
     df = resumen[['LISTA-SUP', 'VENTA_TOTAL_LISTA', 'ESTADO', 'INFLACION', 'INCREMENTO', 'MG_ACTUAL',
                   'MARGEN SUGERIDO']].groupby(['LISTA-SUP', 'VENTA_TOTAL_LISTA', 'ESTADO']).mean().reset_index()
-    mens = resumen.dropna(subset='MENSAJE')[['LISTA-SUP', 'MENSAJE']].groupby('LISTA-SUP').agg('; '.join).reset_index()
-    df = df.merge(mens)
-    df['INFLACION'] = df['INFLACION'] * 100 
+    mens = resumen.dropna(subset='MENSAJE')[['LISTA-SUP', 'MENSAJE']].drop_duplicates().groupby('LISTA-SUP').agg('; '.join).reset_index()
+    df = df.merge(mens, how='left')
+    df['INFLACION'] = df['INFLACION'] * 100
     df['INCREMENTO'] = df['INCREMENTO'] * 100
     df['MG_ACTUAL'] = df['MG_ACTUAL'] * 100
     df['MARGEN SUGERIDO'] = df['MARGEN SUGERIDO'] * 100
@@ -481,16 +529,7 @@ else:
                              default=resumen[resumen['GRUPO'].isin(grupos)]['LISTA-SUP'].unique())
 
         #Resultados
-        col_tot, col_ap, col_rech = st.columns(3)
-        with col_tot:
-            st.metric('Listas Totales', len(resumen[(resumen['GRUPO'].isin(grupos))]['LISTA'].unique()))
-        with col_ap:
-            st.metric('Listas Aprobadas', len(resumen[(resumen['ESTADO']=='APROBADA') &
-                                (resumen['GRUPO'].isin(grupos))]['LISTA'].unique()))
-        with col_rech:
-            st.metric('Listas Rechazadas', len(resumen[(resumen['ESTADO']=='RECHAZADA') &
-                                (resumen['GRUPO'].isin(grupos))]['LISTA'].unique()))
-
+        st.dataframe(cont)
         st.dataframe(df[(df['LISTA-SUP'].isin(lis))].style.format({"VENTA_TOTAL_LISTA": "$ {:.0f}", 'INFLACION':"% {:.2f}",
                                                                 'INCREMENTO':"% {:.2f}", 'MG_ACTUAL':"% {:.2f}",
                                                                 'MARGEN SUGERIDO':"% {:.2f}"},

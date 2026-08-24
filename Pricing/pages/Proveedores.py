@@ -212,7 +212,7 @@ if prog == 'Análisis de Listas':
         df['INFLACION 2AM'] = inf_24
         df.loc[df[df['MONEDA'] == 'USD'].index, 'INFLACION 2AM'] = inf_24_usa
         df['DIF INCREMENTO 2AM'] = df['INCREMENTO'] - df['INFLACION 2AM']
-        df['PVP MARGEN SOSTENIDO'] = (df['COSTO_NUEVO'] / (1 - df['MG_ACTUAL'])) * (1 + df['IVA']).astype('int64')
+        df['PVP MARGEN SOSTENIDO'] = (df['COSTO_NUEVO'] / (1 - df['MG_ACTUAL'])) * (1 + df['IVA'])
         df['MARGEN SUGERIDO'] = (df['PVP_SUGERIDO'] - (df['COSTO_NUEVO'] * df['IVA']))/df['PVP_SUGERIDO']
 
         # Reglas de aprobación

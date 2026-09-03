@@ -103,8 +103,10 @@ except:
     st.stop()
 
 # Selección de programas
-prog = st.selectbox('Selección de programas', options=['Análisis de Listas', 'Resumen de Listas'], key=101)
+# prog = st.selectbox('Selección de programas', options=['Análisis de Listas', 'Resumen de Listas'], key=101)
 st.divider()
+
+prog = 'Análisis de Listas'
 
 if prog == 'Análisis de Listas':
     # Carga de datos
@@ -334,7 +336,7 @@ if prog == 'Análisis de Listas':
                 'PESO_VENTA', 'IVA', 'COSTO_ACTUAL', 'MONEDA', 'COSTO_NUEVO', 'ULTIMO_CAMBIO',
                 'CANT_CAMBIOS_UA', 'CANT_CAMBIOS_U2A', 'INCREMENTO', 'CONTRATOS_DESDE', 'CONTRATOS_HASTA',
                 'CONTRATOS_VENCIMIENTO', 'PVP_ACTUAL', 'MG_ACTUAL', 'PVP_SUGERIDO', 'MG', 'PVP_MARGEN_OBJETIVO',
-                'ESTA_EN_PROMO', 'PROM_FECHA_INICIO', 'PROM_FECHA_FIN', 'ESTADO', 'MENSAJE']
+                'ESTA_EN_PROMO', 'PROM_FECHA_INICIO', 'PROM_FECHA_FIN', 'ESTADO', 'MENSAJE', 'INFLACION']
         if 'carga_prov' not in st.session_state:
             carga = proveedores[proveedores['ESTADO'].isin(['APROBADA', 'RECHAZADA'])][cols]
             carga['FECHA_IMPACTO'] = dt
@@ -349,7 +351,7 @@ if prog == 'Análisis de Listas':
     ON
         TARGET.SUPPLIER = SOURCE.SUPPLIER AND TARGET.LISTA = SOURCE.LISTA AND TARGET.ORIN = SOURCE.ORIN
     WHEN MATCHED THEN
-        UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_IMPACTO = SOURCE.FECHA_IMPACTO, TARGET.MENSAJE = SOURCE.MENSAJE;
+        UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_IMPACTO = SOURCE.FECHA_IMPACTO, TARGET.MENSAJE = SOURCE.MENSAJE, TARGET.INFLACION = SOURCE.INFLACION;
     ''')
                 cursor.execute('DELETE FROM SANDBOX_PLUS.DWH.INPUT_PROVEEDORES_ITEM_LOC;')
                 success = carga_snow_generic(df=carga[~carga['GEOG_LOCL_COD'].isna()], ctx=snow,
@@ -360,7 +362,7 @@ if prog == 'Análisis de Listas':
     ON
         TARGET.SUPPLIER = SOURCE.SUPPLIER AND TARGET.LISTA = SOURCE.LISTA AND TARGET.ORIN = SOURCE.ORIN AND TARGET.GEOG_LOCL_COD = SOURCE.GEOG_LOCL_COD
     WHEN MATCHED THEN
-        UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_IMPACTO = SOURCE.FECHA_IMPACTO, TARGET.MENSAJE = SOURCE.MENSAJE;
+        UPDATE SET TARGET.ESTADO = SOURCE.ESTADO, TARGET.FECHA_IMPACTO = SOURCE.FECHA_IMPACTO, TARGET.MENSAJE = SOURCE.MENSAJE, TARGET.INFLACION = SOURCE.INFLACION;
     ''')
             st.success("Datos actualizados en Snowflake.")
             st.session_state.carga_prov = True
@@ -473,66 +475,66 @@ if prog == 'Análisis de Listas':
 
             st.divider()
             st.success("Proceso completado.")
-else:
-    cursor.execute('SELECT * FROM SANDBOX_PLUS.DWH.COSTO_PROVEEDORES WHERE ESTADO IS NOT NULL;')
-    resumen = cursor.fetch_pandas_all()
+# else:
+#     cursor.execute('SELECT * FROM SANDBOX_PLUS.DWH.COSTO_PROVEEDORES WHERE ESTADO IS NOT NULL;')
+#     resumen = cursor.fetch_pandas_all()
 
-    #Inflación
-    inflacion = pd.read_excel("Inflación.xlsx")
-    inflacion["Mes"] = inflacion["Mes"].apply(lambda x: pd.Period(str(x), freq="M"))
-    inflacion["factor"] = 1 + inflacion["Inflacion"] / 100
-    ultimo_periodo = inflacion["Mes"].max()
+#     #Inflación
+#     inflacion = pd.read_excel("Inflación.xlsx")
+#     inflacion["Mes"] = inflacion["Mes"].apply(lambda x: pd.Period(str(x), freq="M"))
+#     inflacion["factor"] = 1 + inflacion["Inflacion"] / 100
+#     ultimo_periodo = inflacion["Mes"].max()
 
-    #Agregamos columnas
-    resumen['LISTA-SUP'] = resumen['LISTA'].astype('str') + ' - ' + resumen['SUP_NAME']
-    resumen["INFLACION"] = resumen["ULTIMO_CAMBIO"].apply(calcular_factor_acumulado)
-    resumen['INFLACION'] = resumen['INFLACION'] - 1
-    resumen['MARGEN SUGERIDO'] = (resumen['PVP_SUGERIDO'] -
-                                  (resumen['COSTO_NUEVO'] * (1 + resumen['IVA'])))/resumen['PVP_SUGERIDO']
-    resumen['GERENCIA'] = 'PGC'
-    resumen.loc[resumen[resumen['GRUPO'].isin(['PERFUMERIA', 'LIMPIEZA DEL HOGAR'])].index,
-                'GERENCIA'] = 'PYL'
-    resumen.loc[resumen[resumen['GRUPO'].isin(['CARNES', 'FRUVER', 'LACTEOS', 'ELABORACION DE ALIMENTOS', 'FIAMBRERIA', 'CONGELADOS'])].index,
-                        'GERENCIA'] = 'FRESCOS'
-    resumen.loc[resumen[resumen['GRUPO'].isin(['HOGAR', 'TEXTIL', 'JUGUETERIA', 'ELECTRO', 'NAVIDAD', 'LIBRERIA', 'PROMOCIONES'])].index,
-                        'GERENCIA'] = 'NON FOOD'
-    tot = resumen[['GERENCIA', 'LISTA']].drop_duplicates().groupby('GERENCIA').count().reset_index()
-    tot.columns = ['GERENCIA', 'LISTAS TOTALES']
-    ap = resumen[resumen['ESTADO']=='APROBADA'][['GERENCIA', 'LISTA']].drop_duplicates().groupby('GERENCIA').count().reset_index()
-    ap.columns = ['GERENCIA', 'LISTAS APROBADAS']
-    rec = resumen[resumen['ESTADO']=='RECHAZADA'][['GERENCIA', 'LISTA']].drop_duplicates().groupby('GERENCIA').count().reset_index()
-    rec.columns = ['GERENCIA', 'LISTAS RECHAZADAS']
-    cont = tot.merge(ap, how='left').merge(rec, how='left').fillna(0)
-    df = resumen[['LISTA-SUP', 'VENTA_TOTAL_LISTA', 'ESTADO', 'INFLACION', 'INCREMENTO', 'MG_ACTUAL',
-                  'MARGEN SUGERIDO']].groupby(['LISTA-SUP', 'VENTA_TOTAL_LISTA', 'ESTADO']).mean().reset_index()
-    mens = resumen.dropna(subset='MENSAJE')[['LISTA-SUP', 'MENSAJE']].drop_duplicates().groupby('LISTA-SUP').agg('; '.join).reset_index()
-    df = df.merge(mens, how='left')
-    df['INFLACION'] = df['INFLACION'] * 100
-    df['INCREMENTO'] = df['INCREMENTO'] * 100
-    df['MG_ACTUAL'] = df['MG_ACTUAL'] * 100
-    df['MARGEN SUGERIDO'] = df['MARGEN SUGERIDO'] * 100
+#     #Agregamos columnas
+#     resumen['LISTA-SUP'] = resumen['LISTA'].astype('str') + ' - ' + resumen['SUP_NAME']
+#     resumen["INFLACION"] = resumen["ULTIMO_CAMBIO"].apply(calcular_factor_acumulado)
+#     resumen['INFLACION'] = resumen['INFLACION'] - 1
+#     resumen['MARGEN SUGERIDO'] = (resumen['PVP_SUGERIDO'] -
+#                                   (resumen['COSTO_NUEVO'] * (1 + resumen['IVA'])))/resumen['PVP_SUGERIDO']
+#     resumen['GERENCIA'] = 'PGC'
+#     resumen.loc[resumen[resumen['GRUPO'].isin(['PERFUMERIA', 'LIMPIEZA DEL HOGAR'])].index,
+#                 'GERENCIA'] = 'PYL'
+#     resumen.loc[resumen[resumen['GRUPO'].isin(['CARNES', 'FRUVER', 'LACTEOS', 'ELABORACION DE ALIMENTOS', 'FIAMBRERIA', 'CONGELADOS'])].index,
+#                         'GERENCIA'] = 'FRESCOS'
+#     resumen.loc[resumen[resumen['GRUPO'].isin(['HOGAR', 'TEXTIL', 'JUGUETERIA', 'ELECTRO', 'NAVIDAD', 'LIBRERIA', 'PROMOCIONES'])].index,
+#                         'GERENCIA'] = 'NON FOOD'
+#     tot = resumen[['GERENCIA', 'LISTA']].drop_duplicates().groupby('GERENCIA').count().reset_index()
+#     tot.columns = ['GERENCIA', 'LISTAS TOTALES']
+#     ap = resumen[resumen['ESTADO']=='APROBADA'][['GERENCIA', 'LISTA']].drop_duplicates().groupby('GERENCIA').count().reset_index()
+#     ap.columns = ['GERENCIA', 'LISTAS APROBADAS']
+#     rec = resumen[resumen['ESTADO']=='RECHAZADA'][['GERENCIA', 'LISTA']].drop_duplicates().groupby('GERENCIA').count().reset_index()
+#     rec.columns = ['GERENCIA', 'LISTAS RECHAZADAS']
+#     cont = tot.merge(ap, how='left').merge(rec, how='left').fillna(0)
+#     df = resumen[['LISTA-SUP', 'VENTA_TOTAL_LISTA', 'ESTADO', 'INFLACION', 'INCREMENTO', 'MG_ACTUAL',
+#                   'MARGEN SUGERIDO']].groupby(['LISTA-SUP', 'VENTA_TOTAL_LISTA', 'ESTADO']).mean().reset_index()
+#     mens = resumen.dropna(subset='MENSAJE')[['LISTA-SUP', 'MENSAJE']].drop_duplicates().groupby('LISTA-SUP').agg('; '.join).reset_index()
+#     df = df.merge(mens, how='left')
+#     df['INFLACION'] = df['INFLACION'] * 100
+#     df['INCREMENTO'] = df['INCREMENTO'] * 100
+#     df['MG_ACTUAL'] = df['MG_ACTUAL'] * 100
+#     df['MARGEN SUGERIDO'] = df['MARGEN SUGERIDO'] * 100
 
-    if len(df) > 0:
-        #Filtros
-        ger = st.multiselect('Gerencia', options=['PGC', 'PYL', 'FRESCOS', 'NON FOOD'],
-                             default=['PGC', 'PYL', 'FRESCOS', 'NON FOOD'])
-        grupos = []
-        if 'PGC' in ger:
-            grupos += ['KIOSKO', 'BEBIDAS', 'COMESTIBLES']
-        if 'PYL' in ger:
-            grupos += ['PERFUMERIA', 'LIMPIEZA DEL HOGAR']
-        if 'FRESCOS' in ger:
-            grupos += ['CARNES', 'FRUVER', 'LACTEOS', 'ELABORACION DE ALIMENTOS', 'FIAMBRERIA', 'CONGELADOS']
-        if 'NON FOOD' in ger:
-            grupos += ['HOGAR', 'TEXTIL', 'JUGUETERIA', 'ELECTRO', 'NAVIDAD', 'LIBRERIA', 'PROMOCIONES']
-        lis = st.multiselect('Listas', options=resumen[resumen['GRUPO'].isin(grupos)]['LISTA-SUP'].unique(),
-                             default=resumen[resumen['GRUPO'].isin(grupos)]['LISTA-SUP'].unique())
+#     if len(df) > 0:
+#         #Filtros
+#         ger = st.multiselect('Gerencia', options=['PGC', 'PYL', 'FRESCOS', 'NON FOOD'],
+#                              default=['PGC', 'PYL', 'FRESCOS', 'NON FOOD'])
+#         grupos = []
+#         if 'PGC' in ger:
+#             grupos += ['KIOSKO', 'BEBIDAS', 'COMESTIBLES']
+#         if 'PYL' in ger:
+#             grupos += ['PERFUMERIA', 'LIMPIEZA DEL HOGAR']
+#         if 'FRESCOS' in ger:
+#             grupos += ['CARNES', 'FRUVER', 'LACTEOS', 'ELABORACION DE ALIMENTOS', 'FIAMBRERIA', 'CONGELADOS']
+#         if 'NON FOOD' in ger:
+#             grupos += ['HOGAR', 'TEXTIL', 'JUGUETERIA', 'ELECTRO', 'NAVIDAD', 'LIBRERIA', 'PROMOCIONES']
+#         lis = st.multiselect('Listas', options=resumen[resumen['GRUPO'].isin(grupos)]['LISTA-SUP'].unique(),
+#                              default=resumen[resumen['GRUPO'].isin(grupos)]['LISTA-SUP'].unique())
 
-        #Resultados
-        st.dataframe(cont)
-        st.dataframe(df[(df['LISTA-SUP'].isin(lis))].style.format({"VENTA_TOTAL_LISTA": "$ {:.0f}", 'INFLACION':"% {:.2f}",
-                                                                'INCREMENTO':"% {:.2f}", 'MG_ACTUAL':"% {:.2f}",
-                                                                'MARGEN SUGERIDO':"% {:.2f}"},
-                                                                thousands=".", decimal=","))
-    else:
-        st.warning('No hay listas analizadas')
+#         #Resultados
+#         st.dataframe(cont)
+#         st.dataframe(df[(df['LISTA-SUP'].isin(lis))].style.format({"VENTA_TOTAL_LISTA": "$ {:.0f}", 'INFLACION':"% {:.2f}",
+#                                                                 'INCREMENTO':"% {:.2f}", 'MG_ACTUAL':"% {:.2f}",
+#                                                                 'MARGEN SUGERIDO':"% {:.2f}"},
+#                                                                 thousands=".", decimal=","))
+#     else:
+#         st.warning('No hay listas analizadas')

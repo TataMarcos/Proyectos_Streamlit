@@ -34,6 +34,8 @@ def snowflake_login():
         snowflake_connection = snowflake.connector.connect(
             user=user,
             password="aK09fWyh4i5oVcI9A31Ea4vXMcquhMMlIE9sXRoil3oSw9faD9",
+            authenticator="SNOWFLAKE_JWT",
+            private_key_file=r"C:\snowflake_keys\rsa_key.p8",
             account="XZ23267-dp32414",
             database="SANDBOX_PLUS",
             schema="DWH"

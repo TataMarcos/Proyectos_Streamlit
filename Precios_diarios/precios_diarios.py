@@ -18,6 +18,8 @@ def snowflake_login():
             user=user,
             password="aK09fWyh4i5oVcI9A31Ea4vXMcquhMMlIE9sXRoil3oSw9faD9",
             account="XZ23267-dp32414",
+            authenticator="SNOWFLAKE_JWT",
+            private_key_file=r"C:\snowflake_keys\rsa_key.p8",
             database="SANDBOX_PLUS",
             schema="DWH"
         )

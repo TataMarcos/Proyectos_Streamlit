@@ -201,7 +201,7 @@ if prog == 'Análisis de Listas':
         df['COSTO X INFLACION 2AM USA'] = df['COSTO_ACTUAL'] * (1 + inf_24_usa)
         df["INFLACION"] = df["ULTIMO_CAMBIO"].apply(calcular_factor_acumulado)
         df["factor_inflacion_usa"] = df["ULTIMO_CAMBIO"].apply(calcular_factor_acumulado_usa)
-        df["INFLACION USA"] = df["INFLACION"] * df["factor_inflacion_usa"]
+        df["INFLACION USA"] = ((1 + df["INFLACION"]) / df["factor_inflacion_usa"]) - 1
         df.loc[df[df['MONEDA'] == 'USD'].index, 'INFLACION'] = df.loc[
             df[df['MONEDA'] == 'USD'].index, 'INFLACION USA']
         df['COSTO X INFLACION'] = df["COSTO_ACTUAL"] * df["INFLACION"]

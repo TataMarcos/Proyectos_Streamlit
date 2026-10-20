@@ -33,7 +33,8 @@ except:
     st.error('Error de conexión. Verificá las credenciales de Snowflake.')
     st.stop()
 
-prog = st.selectbox('Seleccione el programa:', ['Referente', 'Mercado + Surtido', 'Descarga de canastas'])
+prog = st.selectbox('Seleccione el programa:', ['Referente', 'Mercado + Surtido',
+                                                'Descarga de canastas', 'Consulta items sin canasta'])
 
 if prog == 'Descarga de canastas':
     c = st.selectbox('Seleccione la canasta:', ['referente', 'mercado', 'surtido', 'excluido', 'marca propia'])
@@ -240,3 +241,20 @@ elif prog == 'Mercado + Surtido':
 
         st.divider()
         st.success("Proceso completado.")
+
+elif prog == 'Consulta items sin canasta':
+    with st.spinner('Descargando datos...'):
+        cursor.execute('''
+SELECT DISTINCT LAA.ORIN, MO.MG, F.FAMILIA FROM MSTRDB.DWH.LU_ARTC_ARTICULO LAA
+JOIN MSTRDB.DWH.ITEM_MASTER IM ON IM.ITEM = LAA.ORIN AND IM.ITEM_NUMBER_TYPE = 'ITEM'
+JOIN MSTRDB.DWH.DEPS DD ON DD.DEPT = IM.DEPT AND DD.GROUP_NO IN (1, 3, 4, 6, 9, 15, 18)
+JOIN MSTRDB.DWH.FT_STOCK FS ON FS.ARTC_ARTC_ID = LAA.ARTC_ARTC_ID AND FS.TIEM_DIA_ID = CURRENT_DATE() - 1 AND FS.ARTC_ESTA_ID = 4
+LEFT JOIN SANDBOX_PLUS.DWH.INPUT_PRICING_MARGEN_OBJETIVO MO ON LAA.ORIN = MO.ORIN
+LEFT JOIN SANDBOX_PLUS.DWH.RELACIONES_ITEM_PARENT_ACTUALIZADOS F ON LAA.ORIN = F.ITEM
+WHERE LAA.ORIN NOT IN (SELECT DISTINCT ITEM::TEXT FROM SPIKE.SPIKE.CANASTAS);''')
+        df = cursor.fetch_pandas_all()
+    st.metric("Registros encontrados", len(df))
+    st.dataframe(df.head(), use_container_width=True)
+    csv = df.to_csv(index=False, sep=';')
+    st.download_button(label='⬇️ Descargar tabla', data=csv, file_name='Items sin canastas.csv',
+                       mime='text/csv', use_container_width=False)

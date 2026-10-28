@@ -2,8 +2,9 @@ import pandas as pd
 import time
 from datetime import datetime, date
 import streamlit as st
-from utils import descargar_segmento, snowflake_login, get_credentials, carga_snow_generic
+from utils import descargar_segmento, snowflake_login, get_credentials, carga_snow_generic, enviar_email
 from io import BytesIO
+import os
 
 st.set_page_config(page_title="Proveedores", page_icon="🏭", layout="wide")
 
@@ -103,11 +104,36 @@ except:
     st.stop()
 
 # Selección de programas
-# prog = st.selectbox('Selección de programas', options=['Análisis de Listas', 'Resumen de Listas'], key=101)
+prog = st.selectbox('Selección de programas', key=101,
+                    options=['Análisis de Listas', 'Listas Rechazadas en Plataforma'])
 st.divider()
 
-prog = 'Análisis de Listas'
+# Programa para informar listas rechazadas en plataforma
+if prog == 'Listas Rechazadas en Plataforma':
+    cursor.execute('SELECT * FROM SANDBOX_PLUS.DWH.COSTO_PROVEEDORES_LISTAS_RECHAZADAS WHERE INFORMADO_A IS NULL;')
+    rechazadas = cursor.fetch_pandas_all()
+    nh = rechazadas.drop(columns='INFORMADO_A')
+    rechazar = st.data_editor(rechazadas.sort_values(['NRO_SOLICITUD', 'MENSAJE', 'ERROR']),
+                              use_container_width=True, disabled=nh, key="editor_rechazadas")
+    if st.button('Informar'):
+        informar = rechazadas.drop(columns='INFORMADO_A').merge(rechazar[~rechazar['INFORMADO_A'].isna()][['NRO_SOLICITUD', 'INFORMADO_A']])
+        if len(informar)>0:
+            for m in informar['INFORMADO_A'].unique():
+                informar[informar['INFORMADO_A']==m].to_excel('RECHAZADA.xlsx', index=False)
+                enviar_email(sender='proveedores@tata.com.uy', receiver=[m], subject='Lista Rechazada',
+                            body='Buen dia\n\nLas listas que se adjuntan fueron rechazadas por los motivos ahi aclarados.\n\nSaludos,',
+                            files=['RECHAZADA.xlsx'])
+                os.remove('RECHAZADA.xlsx')
+                st.write('Correo con listas rechazadas enviadas a '+ m)
+                l = tuple(informar[informar['INFORMADO_A']==m]['NRO_SOLICITUD'].unique())
+                cursor.execute('''DELETE FROM SANDBOX_PLUS.DWH.COSTO_PROVEEDORES_LISTAS_RECHAZADAS
+                                    WHERE NRO_SOLICITUD IN {listas}'''.format(listas=l if len(l) > 1 else f'({l[0]})'))
+                success = carga_snow_generic(df=informar[informar['INFORMADO_A']==m], ctx=snow, database='SANDBOX_PLUS',
+                                            schema='DWH', table='COSTO_PROVEEDORES_LISTAS_RECHAZADAS')
+                if success:
+                    st.success(f'Listas {l} cargadas')
 
+# Programa para 
 if prog == 'Análisis de Listas':
     # Carga de datos
     if 'prov' not in st.session_state:

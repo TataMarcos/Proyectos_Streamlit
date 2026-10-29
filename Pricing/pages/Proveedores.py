@@ -131,7 +131,7 @@ if prog == 'Listas Rechazadas en Plataforma':
                 success = carga_snow_generic(df=informar[informar['INFORMADO_A']==m], ctx=snow, database='SANDBOX_PLUS',
                                             schema='DWH', table='COSTO_PROVEEDORES_LISTAS_RECHAZADAS')
                 if success:
-                    st.success(f'Listas {l} cargadas')
+                    st.success(f'Se registró que las listas {l} fueron informadas')
 
 # Programa para 
 if prog == 'Análisis de Listas':

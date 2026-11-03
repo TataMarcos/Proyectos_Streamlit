@@ -30,7 +30,8 @@ for i in range((datetime.today().date() - datetime.today().replace(year=datetime
                    + timedelta(days=i)).strftime('%Y-%m-%d'))
 fechas.reverse()
 
-fecha = st.selectbox('Seleccionar fecha de inicio:', options=fechas)
+fecha_ini = st.selectbox('Seleccionar fecha de inicio:', options=fechas)
+fecha_fin = st.selectbox('Seleccionar fecha de fin:', options=fechas)
 
 st.info('Arrastrá el archivo Excel con las columnas: **[LOCAL, ITEM]**')
 uploaded_file = st.file_uploader("Cargar archivo", type="xlsx")
@@ -64,7 +65,7 @@ LEFT JOIN
 LEFT JOIN
     MSTRDB.DWH.FT_COSTO_UNITARIO_RMS AS FC ON FC.ARTC_ARTC_ID = FT.ARTC_ARTC_ID AND FC.GEOG_LOCL_ID = FT.GEOG_LOCL_ID AND FC.TIEM_DIA_ID = CURRENT_DATE() - 1
 WHERE
-    FT.TIEM_DIA_ID BETWEEN '{fecha}' AND CURRENT_DATE - 1
+    FT.TIEM_DIA_ID BETWEEN '{fecha_ini}' AND '{fecha_fin}'
 AND
     LAA.ORIN IN ('{"', '".join(str(l) for l in cons['ITEM'].unique())}')
 AND

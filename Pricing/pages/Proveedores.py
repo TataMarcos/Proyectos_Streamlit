@@ -277,7 +277,7 @@ if prog == 'Análisis de Listas':
         st.subheader("Revisión por lista")
         df = st.session_state.prov_filtros[0]
         dis = st.session_state.prov_filtros[1]
-        df_desc = df.drop(columns=['SUGERENCIA', 'ESTADO', 'MENSAJE'])
+        df_desc = df.drop(columns=['ESTADO', 'MENSAJE'])
         df_desc['VENTA_TOTAL_LISTA'] = df_desc['VENTA_TOTAL_LISTA'].astype('int64')
         df_desc['PVP_ACTUAL'] = df_desc['PVP_ACTUAL'].astype('int64')
         df_desc['PVP MARGEN SOSTENIDO'] = df_desc['PVP MARGEN SOSTENIDO'].astype('int64')
@@ -303,7 +303,7 @@ if prog == 'Análisis de Listas':
                            'Dif Incremento', 'Dif Incremento AM', 'Dif Incremento 2AM', 'Contratos Desde',
                            'Contratos Hasta', 'Contratos Vencimiento', 'Pvp Actual', 'Margen Actual',
                            'Pvp Margen Sostenido', 'Pvp Sugerido', 'Margen Sugerido', 'Pvp Margen Objetivo',
-                           'Margen Objetivo', 'Esta En Promo', 'Prom Fecha Inicio', 'Prom Fecha Fin']
+                           'Margen Objetivo', 'Esta En Promo', 'Prom Fecha Inicio', 'Prom Fecha Fin', 'Sugerencia']
         
         proveedores = st.data_editor(
             df, use_container_width=True,

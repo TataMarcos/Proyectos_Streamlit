@@ -216,7 +216,7 @@ if prog == 'Análisis de Listas':
         control.columns = ['GEOG_LOCL_COD', 'LISTA', 'ORIN', 'REGISTROS']
         control = control[control['REGISTROS']>1]
         if len(control) > 0:
-            st.write('Los siguientes items tienen multiples costos nuevos asociados en las siguientes listas: ')
+            st.write('Las siguientes listas tienen multiples costos nuevos asociados para un mismo item: ')
             st.dataframe(control['LISTA'].unique())
             st.write('Quitarlas del filtro para continuar.')
             st.stop()
@@ -280,7 +280,7 @@ if prog == 'Análisis de Listas':
         df_desc = df.drop(columns=['ESTADO', 'MENSAJE'])
         df_desc['VENTA_TOTAL_LISTA'] = df_desc['VENTA_TOTAL_LISTA'].astype('int64')
         df_desc['PVP_ACTUAL'] = df_desc['PVP_ACTUAL'].astype('int64')
-        df_desc['PVP MARGEN SOSTENIDO'] = df_desc['PVP MARGEN SOSTENIDO'].astype('int64')
+        df_desc['PVP MARGEN SOSTENIDO'] = df_desc['PVP MARGEN SOSTENIDO'].round()
         df_desc['PVP_SUGERIDO'] = df_desc['PVP_SUGERIDO'].astype('int64')
         df_desc['PVP_MARGEN_OBJETIVO'] = df_desc['PVP_MARGEN_OBJETIVO'].round()
         df_desc['PESO_VENTA'] = df_desc['PESO_VENTA'].round(4)

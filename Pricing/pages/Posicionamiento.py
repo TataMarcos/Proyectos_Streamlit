@@ -96,7 +96,7 @@ try:
             sender='marcos.larran@tata.com.uy',
             subject='Posicionamiento nuevo',
             files=[output_path],
-            receiver=["ds-team@gdn.com.uy", 'marcela.moreira@tata.com.uy', 'nahuel.hartwig@tata.com.uy'],
+            receiver=["ds-team@gdn.com.uy", 'meinller.barosic@tata.com.uy'],
             body='Se envía posicionamiento nuevo. Corregir y enviar a Fernando Salvarezza.'
         )
     os.remove(output_path)
